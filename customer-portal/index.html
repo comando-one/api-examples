@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Comando.One API — Portal do cliente</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #0b1120; color: #e2e8f0; font: 14px/1.5 ui-sans-serif, system-ui, sans-serif; }
+    .wrap { max-width: 880px; margin: 0 auto; padding: 28px 20px 60px; }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    h2 { font-size: 15px; margin: 0 0 12px; color: #cbd5e1; }
+    p.sub { color: #94a3b8; margin: 0 0 20px; }
+    .card { background: #111827; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+    label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 4px; }
+    input { width: 100%; background: #0b1120; border: 1px solid rgba(255,255,255,.12); color: #e2e8f0; border-radius: 8px; padding: 9px 11px; font: inherit; margin-bottom: 12px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+    .row > div { flex: 1; min-width: 160px; }
+    button { background: #2563eb; color: #fff; border: 0; border-radius: 8px; padding: 10px 18px; font: inherit; font-weight: 600; cursor: pointer; }
+    button.ghost { background: rgba(255,255,255,.06); }
+    button.sm { padding: 5px 11px; font-size: 13px; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .muted { color: #94a3b8; }
+    .pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; }
+    .pending { background: rgba(245,158,11,.14); color: #fbbf24; }
+    .paid { background: rgba(16,185,129,.14); color: #34d399; }
+    .cancel { background: rgba(148,163,184,.14); color: #94a3b8; }
+    .item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.06); }
+    .item .nm { flex: 1; }
+    .item .amt { color: #93c5fd; font-weight: 600; }
+    .codebox { background: #0b1120; border: 1px dashed rgba(255,255,255,.18); border-radius: 8px; padding: 12px; word-break: break-all; font-family: ui-monospace, monospace; font-size: 12px; color: #93c5fd; margin-top: 8px; }
+    code { color: #93c5fd; }
+    .err { color: #f87171; font-size: 12.5px; }
+    .crumb { color: #94a3b8; font-size: 13px; margin-bottom: 10px; }
+    .crumb a { color: #93c5fd; cursor: pointer; }
+    details summary { cursor: pointer; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>👤 Portal do cliente — Comando.One API</h1>
+    <p class="sub">Consulta read-only do lado do <strong>pagador</strong>: busca o cliente por documento/nome e mostra
+      suas <strong>faturas em aberto</strong> e o <strong>Pix/boleto</strong> de cada uma.</p>
+
+    <details class="card" id="cfgCard" open>
+      <summary><strong>Configuração da API</strong></summary>
+      <div style="margin-top:12px">
+        <label>API Key (cmd_live_...)</label>
+        <input id="apiKey" type="password" placeholder="cmd_live_..." autocomplete="off" />
+        <div class="row">
+          <div>
+            <label>Base URL</label>
+            <input id="baseUrl" value="https://api.comando.one/v1" />
+          </div>
+          <div>
+            <label>X-Company-Id (opcional)</label>
+            <input id="companyId" placeholder="empresa padrão da chave" />
+          </div>
+        </div>
+        <p class="muted" style="margin:0;font-size:12px">Scopes: <code>customers:read</code>, <code>invoices:read</code>, <code>charges:read</code>. A chave fica só no seu navegador.</p>
+      </div>
+    </details>
+
+    <!-- BUSCA -->
+    <div class="card" id="searchView">
+      <h2>Buscar cliente</h2>
+      <div class="row">
+        <div><label>CPF / CNPJ ou nome</label><input id="q" placeholder="ex.: 12345678000195 ou ACME" /></div>
+        <div style="flex:0"><button id="searchBtn">Buscar</button></div>
+      </div>
+      <div id="searchResult"></div>
+    </div>
+
+    <!-- FATURAS -->
+    <div class="card" id="invoicesView" style="display:none">
+      <div class="crumb"><a id="backToSearch">← buscar outro cliente</a></div>
+      <h2 id="custName"></h2>
+      <div id="invoicesList"></div>
+    </div>
+
+    <!-- DETALHE -->
+    <div class="card" id="detailView" style="display:none">
+      <div class="crumb"><a id="backToInvoices">← voltar às faturas</a></div>
+      <h2 id="invTitle"></h2>
+      <div id="invItems"></div>
+      <div id="invCharges"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { makeApi, searchCustomers, getCustomerInvoices, getInvoiceDetail, getInvoiceCharges, isOpenInvoice, fmtMoney, fmtDate } from "./portal.js";
+
+    const $ = (id) => document.getElementById(id);
+    const LS = "portal_api_key";
+    $("apiKey").value = localStorage.getItem(LS) || "";
+
+    let api = null, current = null;
+
+    function client() {
+      const key = $("apiKey").value.trim();
+      if (!key) throw new Error("Informe a API Key.");
+      localStorage.setItem(LS, key);
+      return makeApi(key, $("baseUrl").value.trim() || undefined, $("companyId").value.trim() || undefined);
+    }
+
+    function statusPill(inv) {
+      const ps = (inv.payment_status || inv.status || "").toLowerCase();
+      if (ps === "pago") return '<span class="pill paid">pago</span>';
+      if (ps.includes("cancel")) return '<span class="pill cancel">cancelado</span>';
+      return '<span class="pill pending">em aberto</span>';
+    }
+
+    function show(view) {
+      for (const v of ["searchView", "invoicesView", "detailView"]) $(v).style.display = v === view ? "block" : "none";
+    }
+
+    $("searchBtn").onclick = async () => {
+      const box = $("searchResult");
+      box.innerHTML = '<p class="muted">Buscando…</p>';
+      try {
+        api = client();
+        const { customers, total } = await searchCustomers(api, $("q").value.trim());
+        if (!customers.length) { box.innerHTML = '<p class="muted">Nenhum cliente encontrado.</p>'; return; }
+        box.innerHTML = `<p class="muted" style="margin:12px 0 6px">${customers.length}/${total} resultado(s):</p>` +
+          customers.map((c) => `<div class="item"><div class="nm"><strong>${c.name}</strong><br><span class="muted">${c.document || "sem documento"} · ${c.type || ""}</span></div><button class="sm openCust" data-id="${c.id}" data-name="${encodeURIComponent(c.name)}">Abrir</button></div>`).join("");
+        for (const b of box.querySelectorAll(".openCust")) b.onclick = () => openCustomer(b.dataset.id, decodeURIComponent(b.dataset.name));
+      } catch (e) { box.innerHTML = `<p class="err">${e.message}</p>`; }
+    };
+
+    async function openCustomer(id, name) {
+      current = { id, name };
+      $("custName").textContent = name;
+      $("invoicesList").innerHTML = '<p class="muted">Carregando faturas…</p>';
+      show("invoicesView");
+      try {
+        const { invoices } = await getCustomerInvoices(api, id);
+        if (!invoices.length) { $("invoicesList").innerHTML = '<p class="muted">Este cliente não tem faturas.</p>'; return; }
+        $("invoicesList").innerHTML = invoices.map((inv) =>
+          `<div class="item"><div class="nm">${inv.title || inv.id}<br><span class="muted">venc. ${fmtDate(inv.due_date)}</span></div><span class="amt">${fmtMoney(inv.amount)}</span> ${statusPill(inv)} <button class="sm ghost openInv" data-id="${inv.id}">Ver</button></div>`
+        ).join("");
+        for (const b of $("invoicesList").querySelectorAll(".openInv")) b.onclick = () => openInvoice(b.dataset.id);
+      } catch (e) { $("invoicesList").innerHTML = `<p class="err">${e.message}</p>`; }
+    }
+
+    async function openInvoice(id) {
+      $("invItems").innerHTML = '<p class="muted">Carregando…</p>';
+      $("invCharges").innerHTML = "";
+      show("detailView");
+      try {
+        const inv = await getInvoiceDetail(api, id);
+        $("invTitle").innerHTML = `${inv.title || "Fatura"} — ${fmtMoney(inv.amount)} ${statusPill(inv)}`;
+        const items = inv.invoice_items || inv.items || [];
+        $("invItems").innerHTML = items.length
+          ? items.map((it) => `<div class="item"><div class="nm">${it.quantity ?? 1}× ${it.name}</div><span class="amt">${fmtMoney(it.subtotal ?? (it.unit_price * (it.quantity ?? 1)))}</span></div>`).join("")
+          : '<p class="muted">Fatura sem itens detalhados.</p>';
+        const charges = await getInvoiceCharges(api, { customerId: current.id, invoiceId: id });
+        const pix = charges.find((c) => c.pix?.qr_code);
+        const boleto = charges.find((c) => c.boleto?.digitable_line);
+        if (pix) $("invCharges").innerHTML = `<h2 style="margin-top:16px">Pix copia-e-cola</h2><div class="codebox">${pix.pix.qr_code}</div>`;
+        else if (boleto) $("invCharges").innerHTML = `<h2 style="margin-top:16px">Linha digitável</h2><div class="codebox">${boleto.boleto.digitable_line}</div>`;
+        else $("invCharges").innerHTML = '<p class="muted" style="margin-top:14px">Nenhuma cobrança Pix/boleto gerada para esta fatura ainda.</p>';
+      } catch (e) { $("invItems").innerHTML = `<p class="err">${e.message}</p>`; }
+    }
+
+    $("backToSearch").onclick = () => show("searchView");
+    $("backToInvoices").onclick = () => openCustomer(current.id, current.name);
+  </script>
+</body>
+</html>

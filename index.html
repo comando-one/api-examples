@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Comando.One API — Demos</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #0b1120; color: #e2e8f0; font: 14px/1.5 ui-sans-serif, system-ui, sans-serif; }
+    .wrap { max-width: 880px; margin: 0 auto; padding: 32px 20px 60px; }
+    h1 { font-size: 24px; margin: 0 0 4px; }
+    p.sub { color: #94a3b8; margin: 0 0 24px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px,1fr)); gap: 14px; }
+    a.card { display: block; text-decoration: none; background: #111827; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 16px; color: inherit; transition: border-color .15s, transform .15s; }
+    a.card:hover { border-color: #2563eb; transform: translateY(-2px); }
+    .card .emoji { font-size: 28px; }
+    .card .name { font-weight: 700; margin: 8px 0 4px; font-size: 15px; }
+    .card .desc { color: #94a3b8; font-size: 12.5px; }
+    .card .tag { display:inline-block; margin-top:10px; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: rgba(37,99,235,.16); color: #93c5fd; }
+    .sec { color: #cbd5e1; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; margin: 28px 0 12px; }
+    code { color: #93c5fd; }
+    a.lnk { color: #93c5fd; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>🧪 Comando.One API — Demos</h1>
+    <p class="sub">Projetos de exemplo que consomem a <strong>API pública</strong> (<code>api.comando.one</code>) ponta a ponta.
+      Use uma chave <code>cmd_live_…</code> de <strong>empresa de teste</strong>. Guia completo no <a class="lnk" href="README.md">README</a>.</p>
+
+    <div class="sec">Recebimento</div>
+    <div class="grid">
+      <a class="card" href="checkout/index.html">
+        <div class="emoji">🛒</div>
+        <div class="name">Checkout fake</div>
+        <div class="desc">Loja: carrinho → cliente → fatura → cobrança Pix/boleto.</div>
+        <span class="tag">customers · invoices · charges</span>
+      </a>
+      <a class="card" href="customer-portal/index.html">
+        <div class="emoji">👤</div>
+        <div class="name">Portal do cliente</div>
+        <div class="desc">Lado pagador: busca cliente e mostra faturas + Pix.</div>
+        <span class="tag">customers · invoices · charges</span>
+      </a>
+    </div>
+
+    <div class="sec">Comercial &amp; Contas a pagar</div>
+    <div class="grid">
+      <a class="card" href="sales-pipeline/index.html">
+        <div class="emoji">📝</div>
+        <div class="name">Proposta → Contrato</div>
+        <div class="desc">Vendedor: cria proposta, envia, aceita e vira contrato.</div>
+        <span class="tag">proposals · contracts</span>
+      </a>
+      <a class="card" href="accounts-payable/index.html">
+        <div class="emoji">💸</div>
+        <div class="name">Repasse a fornecedor</div>
+        <div class="desc">Conta a pagar com parcelas, despesa e payout Pix.</div>
+        <span class="tag">suppliers · purchase-invoices · payouts</span>
+      </a>
+      <a class="card" href="split/index.html">
+        <div class="emoji">🅿️</div>
+        <div class="name">Split de Pagamentos</div>
+        <div class="desc">Hub de estacionamento: divide o recebimento entre hub e estacionamento (15/85) + split por parcela.</div>
+        <span class="tag">split · suppliers · charges</span>
+      </a>
+    </div>
+
+    <div class="sec">Financeiro &amp; Fiscal</div>
+    <div class="grid">
+      <a class="card" href="dre-report/index.html">
+        <div class="emoji">📊</div>
+        <div class="name">Mini DRE</div>
+        <div class="desc">Demonstrativo receita × despesa a partir do ledger.</div>
+        <span class="tag">finance · cost-centers</span>
+      </a>
+      <a class="card" href="nfse-batch/index.html">
+        <div class="emoji">🧾</div>
+        <div class="name">NFS-e em lote</div>
+        <div class="desc">Lista faturas pagas sem nota e emite em lote.</div>
+        <span class="tag">invoices · nfse</span>
+      </a>
+    </div>
+
+    <div class="sec">IA &amp; Agentes</div>
+    <div class="grid">
+      <a class="card" href="chatbot/index.html">
+        <div class="emoji">💬</div>
+        <div class="name">Chatbot IA (navegador)</div>
+        <div class="desc">Gemini + MCP remoto via stream: converse aqui e ele opera o ERP. Funciona no navegador.</div>
+        <span class="tag">gemini · mcp remoto · streaming</span>
+      </a>
+      <a class="card" href="mcp-chat/index.html">
+        <div class="emoji">🤖</div>
+        <div class="name">Chat IA via MCP (CLI)</div>
+        <div class="desc">Mesma ideia no terminal, usando o pacote npm @comando.one/mcp-server (stdio).</div>
+        <span class="tag">gemini · mcp stdio · npm</span>
+      </a>
+    </div>
+  </div>
+</body>
+</html>

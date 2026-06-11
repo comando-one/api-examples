@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Comando.One API — Proposta → Contrato</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #0b1120; color: #e2e8f0; font: 14px/1.5 ui-sans-serif, system-ui, sans-serif; }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 28px 20px 60px; }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    h2 { font-size: 15px; margin: 0 0 12px; color: #cbd5e1; }
+    p.sub { color: #94a3b8; margin: 0 0 20px; }
+    .card { background: #111827; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+    label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 4px; }
+    input, select { width: 100%; background: #0b1120; border: 1px solid rgba(255,255,255,.12); color: #e2e8f0; border-radius: 8px; padding: 9px 11px; font: inherit; margin-bottom: 12px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .row > div { flex: 1; min-width: 150px; }
+    button { background: #2563eb; color: #fff; border: 0; border-radius: 8px; padding: 10px 18px; font: inherit; font-weight: 600; cursor: pointer; }
+    button.ghost { background: rgba(255,255,255,.06); }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .muted { color: #94a3b8; }
+    .banner { background: rgba(245,158,11,.10); border: 1px solid rgba(245,158,11,.3); color: #fcd34d; border-radius: 8px; padding: 10px 12px; font-size: 12.5px; margin-bottom: 14px; }
+    .log { font-size: 13px; }
+    .log .li { display: flex; gap: 10px; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,.05); }
+    .log .li .b { width: 26px; flex-shrink: 0; text-align: center; }
+    code { color: #93c5fd; }
+    .err { color: #f87171; }
+    .ok { color: #34d399; }
+    .result { display: none; }
+    .kv { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,.06); }
+    .kv .v { color: #93c5fd; font-family: ui-monospace, monospace; font-size: 12.5px; }
+    details summary { cursor: pointer; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>📝 Proposta → Contrato — Comando.One API</h1>
+    <p class="sub">Pipeline comercial do lado do <strong>vendedor</strong>: cria cliente, gera a proposta,
+      <strong>envia</strong>, <strong>aceita</strong> e converte num <strong>contrato</strong> recorrente.</p>
+
+    <details class="card" id="cfgCard" open>
+      <summary><strong>Configuração da API</strong></summary>
+      <div style="margin-top:12px">
+        <label>API Key (cmd_live_...)</label>
+        <input id="apiKey" type="password" placeholder="cmd_live_..." autocomplete="off" />
+        <div class="row">
+          <div><label>Base URL</label><input id="baseUrl" value="https://api.comando.one/v1" /></div>
+          <div><label>X-Company-Id (opcional)</label><input id="companyId" placeholder="empresa padrão da chave" /></div>
+        </div>
+        <p class="muted" style="margin:0;font-size:12px">Scopes: <code>customers:write</code>, <code>proposals:write</code>, <code>proposals:send</code>, <code>contracts:write</code>.</p>
+      </div>
+    </details>
+
+    <div class="card">
+      <h2>Dados da negociação</h2>
+      <div class="banner">⚠️ A API aceita só o cabeçalho da proposta/contrato — itens de linha não entram via API, apenas o valor total.</div>
+      <label>Nome / Razão social</label>
+      <input id="cName" value="[DEMO] Cliente Comercial" />
+      <div class="row">
+        <div><label>E-mail</label><input id="cEmail" placeholder="comercial@acme.com" /></div>
+        <div><label>CPF/CNPJ</label><input id="cDoc" value="12345678000195" /></div>
+      </div>
+      <div class="row">
+        <div><label>Valor (R$)</label><input id="amount" type="number" value="1500" /></div>
+        <div>
+          <label>Frequência do contrato</label>
+          <select id="freq">
+            <option value="mensal">Mensal</option>
+            <option value="semanal">Semanal</option>
+            <option value="quinzenal">Quinzenal</option>
+            <option value="bimestral">Bimestral</option>
+            <option value="trimestral">Trimestral</option>
+            <option value="semestral">Semestral</option>
+            <option value="anual">Anual</option>
+          </select>
+        </div>
+        <div><label>Validade da proposta (dias)</label><input id="validDays" type="number" value="15" /></div>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <button id="runBtn" style="flex:2">Rodar pipeline</button>
+        <button id="cleanBtn" class="ghost" style="flex:1" disabled>Limpar dados criados</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Progresso</h2>
+      <div class="log" id="log"><p class="muted">Preencha e clique em "Rodar pipeline".</p></div>
+    </div>
+
+    <div class="card result" id="resultCard">
+      <h2>Resultado</h2>
+      <div id="resultBody"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { makeApi, runSalesPipeline, cleanupSalesPipeline, fmtMoney, freqLabel } from "./sales.js";
+
+    const $ = (id) => document.getElementById(id);
+    const LS = "sales_api_key";
+    $("apiKey").value = localStorage.getItem(LS) || "";
+
+    const ICON = { run: "··", ok: "✅", sim: "🟡", fail: "❌", skip: "⏭️" };
+    let api = null, lastResult = null;
+
+    function client() {
+      const key = $("apiKey").value.trim();
+      if (!key) throw new Error("Informe a API Key.");
+      localStorage.setItem(LS, key);
+      return makeApi(key, $("baseUrl").value.trim() || undefined, $("companyId").value.trim() || undefined);
+    }
+
+    function logLine({ status, detail }) {
+      const div = document.createElement("div");
+      div.className = "li";
+      div.innerHTML = `<span class="b">${ICON[status] || "··"}</span><span>${detail}</span>`;
+      $("log").appendChild(div);
+    }
+
+    $("runBtn").onclick = async () => {
+      $("log").innerHTML = "";
+      $("resultCard").style.display = "none";
+      $("runBtn").disabled = true;
+      try {
+        api = client();
+        lastResult = await runSalesPipeline(api, {
+          customer: { name: $("cName").value.trim(), email: $("cEmail").value.trim(), document: $("cDoc").value.trim() },
+          amount: Number($("amount").value),
+          frequency: $("freq").value,
+          validDays: Number($("validDays").value),
+          log: logLine,
+        });
+        $("resultBody").innerHTML = `
+          <div class="kv"><span>Cliente</span><span class="v">${lastResult.customer.id}</span></div>
+          <div class="kv"><span>Proposta</span><span class="v">${lastResult.proposal.id} · ${lastResult.proposal.status}</span></div>
+          <div class="kv"><span>Contrato</span><span class="v">${lastResult.contract.id} · ${freqLabel(lastResult.contract.frequency)} · ${fmtMoney(lastResult.contract.amount)} · ${lastResult.contract.status}</span></div>`;
+        $("resultCard").style.display = "block";
+        $("cleanBtn").disabled = false;
+      } catch (e) {
+        logLine({ status: "fail", detail: `<span class="err">${e.message}</span>` });
+      } finally {
+        $("runBtn").disabled = false;
+      }
+    };
+
+    $("cleanBtn").onclick = async () => {
+      if (!lastResult) return;
+      $("cleanBtn").disabled = true;
+      await cleanupSalesPipeline(api, lastResult, logLine);
+      lastResult = null;
+    };
+  </script>
+</body>
+</html>

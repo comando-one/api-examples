@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Comando.One — Chat IA via MCP</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #0b1120; color: #e2e8f0; font: 14px/1.6 ui-sans-serif, system-ui, sans-serif; }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 32px 20px 60px; }
+    h1 { font-size: 24px; margin: 0 0 4px; }
+    h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .04em; color: #cbd5e1; margin: 28px 0 10px; }
+    p.sub { color: #94a3b8; margin: 0 0 8px; }
+    a { color: #93c5fd; }
+    .badge { display:inline-block; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: rgba(245,158,11,.16); color: #fbbf24; margin-bottom: 16px; }
+    pre { background: #111827; border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 14px 16px; overflow-x: auto; font: 12.5px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    code { color: #93c5fd; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .term { background: #0a0f1c; }
+    .u { color: #67e8f9; } .a { color: #86efac; } .t { color: #fbbf24; } .d { color: #64748b; }
+    .row { display:flex; gap:10px; flex-wrap: wrap; margin-top: 8px; }
+    .pill { font-size: 11px; font-weight:700; padding: 2px 9px; border-radius:999px; background: rgba(37,99,235,.16); color:#93c5fd; }
+    .back { display:inline-block; margin-bottom: 18px; color:#94a3b8; text-decoration:none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="back" href="../index.html">← voltar aos demos</a>
+    <h1>🤖 Chat IA via MCP</h1>
+    <span class="badge">CLI · roda no terminal (Node 18+)</span>
+    <p class="sub">Converse em português e o <strong>Gemini</strong> chama as ferramentas do
+      <a href="https://www.npmjs.com/package/@comando.one/mcp-server" target="_blank"><code>@comando.one/mcp-server</code></a>,
+      que executa ações reais na API do Comando.One.</p>
+    <div class="row">
+      <span class="pill">gemini</span><span class="pill">mcp</span><span class="pill">function calling</span>
+      <span class="pill">~50 tools</span><span class="pill">zero deps</span>
+    </div>
+
+    <h2>Como rodar</h2>
+    <pre><span class="d"># chaves (mesmas envs do projeto)</span>
+export GEMINI_API_KEY="..."            <span class="d"># aistudio.google.com/apikey</span>
+export COMANDO_API_KEY="cmd_live_..."  <span class="d"># Configurações → API Keys</span>
+
+node mcp-chat/chat.mjs</pre>
+    <p class="sub">Ou copie <code>.env.example</code> para <code>.env</code> nesta pasta e preencha — o script carrega sozinho.</p>
+
+    <h2>Exemplo de conversa</h2>
+    <pre class="term"><span class="a">✓ Conectado. 52 ferramentas expostas ao modelo. Modelo: gemini-2.5-flash.</span>
+
+<span class="u">você ›</span> quantos clientes eu tenho?
+<span class="t">🔧 customers_list</span> <span class="d">{"per_page":1}</span>
+<span class="a">assistente ›</span> Você tem 30 clientes cadastrados na Empresa Teste.
+
+<span class="u">você ›</span> cria um cliente "Padaria do Zé", pessoa jurídica, e gera uma fatura de R$ 250 com Pix
+<span class="t">🔧 customers_create</span> <span class="d">{"body":{"name":"Padaria do Zé","type":"juridica"}}</span>
+<span class="t">🔧 invoices_create</span> <span class="d">{"body":{"customer_id":"…","title":"Fatura","items":[…]}}</span>
+<span class="t">🔧 charges_create</span> <span class="d">{"body":{"invoice_id":"…","method":"pix"}}</span>
+<span class="a">assistente ›</span> Pronto! Criei a Padaria do Zé, a fatura de R$ 250 e gerei
+um Pix (copia-e-cola disponível). Quer que eu emita a NFS-e também?</pre>
+
+    <h2>Quer no navegador?</h2>
+    <p class="sub">Esta versão é CLI (sobe o MCP como subprocesso stdio e lê env — coisas de Node).
+      Para conversar direto no navegador, use o <a href="../chatbot/index.html">💬 Chatbot IA (navegador)</a>,
+      que usa o <strong>MCP remoto</strong> (<code>api.comando.one/mcp</code>) via streaming.
+      Veja o código no <a href="README.md">README</a>.</p>
+  </div>
+</body>
+</html>

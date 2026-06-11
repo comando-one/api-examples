@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Comando.One API — Mini DRE</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #0b1120; color: #e2e8f0; font: 14px/1.5 ui-sans-serif, system-ui, sans-serif; }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 28px 20px 60px; }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    h2 { font-size: 15px; margin: 0 0 12px; color: #cbd5e1; }
+    p.sub { color: #94a3b8; margin: 0 0 20px; }
+    .card { background: #111827; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+    label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 4px; }
+    input { width: 100%; background: #0b1120; border: 1px solid rgba(255,255,255,.12); color: #e2e8f0; border-radius: 8px; padding: 9px 11px; font: inherit; margin-bottom: 12px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+    .row > div { flex: 1; min-width: 150px; }
+    button { background: #2563eb; color: #fff; border: 0; border-radius: 8px; padding: 10px 18px; font: inherit; font-weight: 600; cursor: pointer; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .muted { color: #94a3b8; }
+    code { color: #93c5fd; }
+    .err { color: #f87171; }
+    .totals { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+    .tot { flex: 1; min-width: 150px; background: #0b1120; border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 14px; }
+    .tot .lbl { color: #94a3b8; font-size: 12px; }
+    .tot .val { font-size: 20px; font-weight: 700; margin-top: 4px; }
+    .green { color: #34d399; } .red { color: #f87171; } .blue { color: #93c5fd; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid rgba(255,255,255,.06); }
+    th { color: #94a3b8; font-weight: 600; }
+    td.num { text-align: right; font-family: ui-monospace, monospace; }
+    .result { display: none; }
+    details summary { cursor: pointer; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>📊 Mini DRE — Comando.One API</h1>
+    <p class="sub">Demonstrativo financeiro a partir do <strong>razão (ledger)</strong>: pagina o período inteiro,
+      separa <strong>entradas × saídas</strong> e calcula o resultado.</p>
+
+    <details class="card" id="cfgCard" open>
+      <summary><strong>Configuração da API</strong></summary>
+      <div style="margin-top:12px">
+        <label>API Key (cmd_live_...)</label>
+        <input id="apiKey" type="password" placeholder="cmd_live_..." autocomplete="off" />
+        <div class="row">
+          <div><label>Base URL</label><input id="baseUrl" value="https://api.comando.one/v1" /></div>
+          <div><label>X-Company-Id (opcional)</label><input id="companyId" placeholder="empresa padrão da chave" /></div>
+        </div>
+        <p class="muted" style="margin:0;font-size:12px">Scopes: <code>finance:read</code> (e <code>expenses:read</code> p/ centros de custo).</p>
+      </div>
+    </details>
+
+    <div class="card">
+      <h2>Período</h2>
+      <div class="row">
+        <div><label>De</label><input id="start" type="date" /></div>
+        <div><label>Até</label><input id="end" type="date" /></div>
+        <div style="flex:0"><button id="runBtn">Gerar DRE</button></div>
+      </div>
+      <div id="status" class="muted" style="font-size:12.5px"></div>
+    </div>
+
+    <div class="card result" id="resultCard">
+      <h2 id="periodTitle">Resultado</h2>
+      <div class="totals">
+        <div class="tot"><div class="lbl">Entradas</div><div class="val green" id="tEntradas">—</div></div>
+        <div class="tot"><div class="lbl">Saídas</div><div class="val red" id="tSaidas">—</div></div>
+        <div class="tot"><div class="lbl">Resultado</div><div class="val blue" id="tResultado">—</div></div>
+      </div>
+      <table id="originTable">
+        <thead><tr><th>Origem</th><th class="num">Entradas</th><th class="num">Saídas</th><th class="num">Lanç.</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <p class="muted" id="catalogNote" style="font-size:12px;margin-top:12px"></p>
+    </div>
+  </div>
+
+  <script type="module">
+    import { makeApi, runDre, fmtMoney, originLabel, isoDate } from "./dre.js";
+
+    const $ = (id) => document.getElementById(id);
+    const LS = "dre_api_key";
+    $("apiKey").value = localStorage.getItem(LS) || "";
+    $("start").value = isoDate(-30);
+    $("end").value = isoDate();
+
+    let api = null;
+    function client() {
+      const key = $("apiKey").value.trim();
+      if (!key) throw new Error("Informe a API Key.");
+      localStorage.setItem(LS, key);
+      return makeApi(key, $("baseUrl").value.trim() || undefined, $("companyId").value.trim() || undefined);
+    }
+
+    $("runBtn").onclick = async () => {
+      $("status").textContent = "Carregando…";
+      $("resultCard").style.display = "none";
+      $("runBtn").disabled = true;
+      try {
+        api = client();
+        const dre = await runDre(api, {
+          startDate: $("start").value, endDate: $("end").value,
+          log: ({ detail }) => { $("status").textContent = detail; },
+        });
+        $("periodTitle").textContent = `Resultado · ${dre.period.startDate} → ${dre.period.endDate}`;
+        $("tEntradas").textContent = fmtMoney(dre.entradas);
+        $("tSaidas").textContent = fmtMoney(dre.saidas);
+        const r = $("tResultado");
+        r.textContent = fmtMoney(dre.resultado);
+        r.className = "val " + (dre.resultado >= 0 ? "green" : "red");
+        const tb = $("originTable").querySelector("tbody");
+        tb.innerHTML = dre.byOrigin.length
+          ? dre.byOrigin.map((o) => `<tr><td>${originLabel(o.origin)}</td><td class="num green">${fmtMoney(o.entrada)}</td><td class="num red">${fmtMoney(o.saida)}</td><td class="num">${o.count}</td></tr>`).join("")
+          : `<tr><td colspan="4" class="muted">Sem lançamentos no período.</td></tr>`;
+        $("catalogNote").textContent = `${dre.count} lançamento(s) · catálogo: ${dre.natures.length} natureza(s), ${dre.costCenters.length} centro(s) de custo.`;
+        $("resultCard").style.display = "block";
+        $("status").textContent = "";
+      } catch (e) {
+        $("status").innerHTML = `<span class="err">${e.message}</span>`;
+      } finally {
+        $("runBtn").disabled = false;
+      }
+    };
+  </script>
+</body>
+</html>

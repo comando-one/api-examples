@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Comando.One API — Checkout fake</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #0b1120; color: #e2e8f0; font: 14px/1.5 ui-sans-serif, system-ui, sans-serif; }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 28px 20px 60px; }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    h2 { font-size: 15px; margin: 0 0 12px; color: #cbd5e1; }
+    p.sub { color: #94a3b8; margin: 0 0 20px; }
+    .card { background: #111827; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+    label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 4px; }
+    input, select { width: 100%; background: #0b1120; border: 1px solid rgba(255,255,255,.12); color: #e2e8f0; border-radius: 8px; padding: 9px 11px; font: inherit; margin-bottom: 12px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .row > div { flex: 1; min-width: 160px; }
+    button { background: #2563eb; color: #fff; border: 0; border-radius: 8px; padding: 10px 18px; font: inherit; font-weight: 600; cursor: pointer; }
+    button.ghost { background: rgba(255,255,255,.06); }
+    button.sm { padding: 4px 10px; font-size: 13px; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .grid { display: grid; grid-template-columns: 1fr 320px; gap: 16px; align-items: start; }
+    @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+    .products { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap: 12px; }
+    .product { background: #0b1120; border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 12px; }
+    .product .emoji { font-size: 26px; }
+    .product .name { font-weight: 600; margin: 6px 0 2px; }
+    .product .price { color: #93c5fd; font-weight: 600; margin-bottom: 8px; }
+    .cart-line { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,.06); font-size: 13px; }
+    .cart-line .nm { flex: 1; }
+    .cart-line .qty { display: flex; align-items: center; gap: 6px; }
+    .cart-line .qty button { background: rgba(255,255,255,.08); padding: 1px 8px; }
+    .total { display: flex; justify-content: space-between; font-weight: 700; margin: 12px 0; font-size: 16px; }
+    .muted { color: #94a3b8; }
+    .pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; }
+    .pending { background: rgba(245,158,11,.14); color: #fbbf24; }
+    .paid { background: rgba(16,185,129,.14); color: #34d399; }
+    .codebox { background: #0b1120; border: 1px dashed rgba(255,255,255,.18); border-radius: 8px; padding: 12px; word-break: break-all; font-family: ui-monospace, monospace; font-size: 12px; color: #93c5fd; }
+    .qr { background:#fff; color:#000; width: 200px; height: 200px; display:flex; align-items:center; justify-content:center; border-radius: 10px; margin: 0 auto 12px; text-align:center; padding:10px; }
+    .banner { background: rgba(245,158,11,.10); border: 1px solid rgba(245,158,11,.3); color: #fcd34d; border-radius: 8px; padding: 10px 12px; font-size: 12.5px; margin-bottom: 14px; }
+    .log { font-size: 12.5px; }
+    .log .li { display: flex; gap: 8px; padding: 4px 0; }
+    .log .li .b { width: 70px; flex-shrink:0; font-weight:700; }
+    code { color: #93c5fd; }
+    a { color: #93c5fd; }
+    details summary { cursor: pointer; color: #94a3b8; }
+    .center { text-align: center; }
+    .big-check { font-size: 56px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>🛒 Loja Fake — Comando.One API</h1>
+    <p class="sub">Demonstra um checkout real: cria <strong>cliente → fatura → cobrança Pix/boleto</strong> via API.
+      Sem integração bancária na empresa, entra em <strong>modo simulação</strong> (gera dados fake só para a tela).</p>
+
+    <details class="card" id="cfgCard" open>
+      <summary><strong>Configuração da API</strong></summary>
+      <div style="margin-top:12px">
+        <label>API Key (cmd_live_...)</label>
+        <input id="apiKey" type="password" placeholder="cmd_live_..." autocomplete="off" />
+        <div class="row">
+          <div>
+            <label>Base URL</label>
+            <input id="baseUrl" value="https://api.comando.one/v1" />
+          </div>
+          <div>
+            <label>X-Company-Id (opcional)</label>
+            <input id="companyId" placeholder="empresa padrão da chave" />
+          </div>
+        </div>
+        <p class="muted" style="margin:0 0 10px;font-size:12px">Scopes necessários: <code>customers:write</code>, <code>invoices:create</code>, <code>charges:create</code>. A chave fica só no seu navegador.</p>
+        <button id="validateBtn" class="ghost sm">Validar chave</button>
+        <div id="validateResult" style="margin-top:10px;font-size:12.5px"></div>
+
+        <div style="margin-top:14px; border-top:1px solid rgba(255,255,255,.08); padding-top:12px">
+          <label>Webhook URL (https) — recebe charge.paid, charge.cancelled…</label>
+          <input id="webhookUrl" placeholder="https://webhook.site/sua-url ou seu receiver" />
+          <button id="registerWebhookBtn" class="ghost sm">Registrar webhook</button>
+          <div id="webhookResult" style="margin-top:8px;font-size:12.5px"></div>
+        </div>
+      </div>
+    </details>
+
+    <!-- LOJA -->
+    <div id="storeView" class="grid">
+      <div class="card">
+        <h2>Produtos</h2>
+        <div class="products" id="products"></div>
+      </div>
+      <div class="card">
+        <h2>Carrinho</h2>
+        <div id="cartLines"><p class="muted" id="emptyCart">Carrinho vazio.</p></div>
+        <div class="total"><span>Total</span><span id="cartTotal">R$ 0,00</span></div>
+        <button id="checkoutBtn" style="width:100%" disabled>Finalizar compra</button>
+      </div>
+    </div>
+
+    <!-- CHECKOUT -->
+    <div id="checkoutView" class="card" style="display:none; max-width:520px">
+      <h2>Dados do pagamento</h2>
+      <label>Nome / Razão social</label>
+      <input id="cName" placeholder="ACME Ltda" />
+      <div class="row">
+        <div><label>E-mail</label><input id="cEmail" placeholder="financeiro@acme.com" /></div>
+        <div><label>CPF/CNPJ</label><input id="cDoc" placeholder="só números" /></div>
+      </div>
+      <label>Tipo de cliente</label>
+      <select id="cType">
+        <option value="fisica">Pessoa Física</option>
+        <option value="juridica">Pessoa Jurídica</option>
+      </select>
+      <label>Forma de pagamento</label>
+      <select id="cMethod"></select>
+      <div class="muted" id="methodHint" style="font-size:12px; margin:-6px 0 12px"></div>
+      <div class="row" style="margin-top:6px">
+        <button id="payBtn" style="flex:2">Pagar <span id="payTotal"></span></button>
+        <button id="backBtn" class="ghost" style="flex:1">Voltar</button>
+      </div>
+      <div class="log" id="payLog" style="margin-top:14px"></div>
+    </div>
+
+    <!-- PAGAMENTO -->
+    <div id="payView" class="card" style="display:none; max-width:520px">
+      <div id="simBanner" class="banner" style="display:none">
+        ⚠️ <strong>Modo simulação</strong> — a empresa não tem integração bancária ativa, então o Pix/boleto abaixo é fake.
+        A fatura, porém, foi criada de verdade. <span id="simReason" class="muted"></span>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
+        <h2 style="margin:0">Pagamento <span id="payMethodLabel"></span></h2>
+        <span class="pill pending" id="statusPill">pendente</span>
+      </div>
+
+      <div id="pixBox">
+        <div class="qr" id="qrBox">QR Code</div>
+        <label>Pix copia e cola</label>
+        <div class="codebox" id="pixCode"></div>
+        <button class="ghost sm" id="copyPix" style="margin-top:8px">Copiar código</button>
+      </div>
+
+      <div id="boletoBox" style="display:none">
+        <label>Linha digitável</label>
+        <div class="codebox" id="boletoLine"></div>
+        <a id="boletoPdf" href="#" target="_blank" style="display:none">Abrir PDF do boleto ↗</a>
+      </div>
+
+      <p class="muted" style="margin-top:14px; font-size:12.5px" id="pollNote"></p>
+
+      <div id="simPanel" style="margin-top:12px; border-top:1px solid rgba(255,255,255,.08); padding-top:12px">
+        <div class="muted" style="font-size:11px; text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px">Simular evento de pagamento</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap">
+          <button id="simPaid" class="sm" style="background:#16a34a">✓ Confirmar pagamento</button>
+          <button id="simCancel" class="sm ghost">Cancelar cobrança</button>
+          <button id="simExpire" class="sm ghost">Expirar</button>
+          <button id="simFail" class="sm ghost">Falhar</button>
+        </div>
+        <div class="muted" id="simHint" style="font-size:11.5px; margin-top:6px"></div>
+      </div>
+
+      <div id="hooksPanel" style="margin-top:12px; border-top:1px solid rgba(255,255,255,.08); padding-top:12px">
+        <div class="muted" style="font-size:11px; text-transform:uppercase; letter-spacing:.5px; margin-bottom:6px">Entregas de webhook (charge.*)</div>
+        <div id="hooksList" class="muted" style="font-size:12px">—</div>
+      </div>
+    </div>
+
+    <!-- RESULTADO (sucesso ou erro) -->
+    <div id="resultView" class="card center" style="display:none; max-width:520px">
+      <div class="big-check" id="resultIcon">✅</div>
+      <h2 id="resultTitle" style="margin-top:8px">Pagamento confirmado!</h2>
+      <p class="muted" id="resultDetail"></p>
+      <button id="newOrderBtn" style="margin-top:8px">Nova compra</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { CATALOG, makeApi, cartTotal, placeOrder, refreshCharge, cancelCharge, confirmPayment, registerWebhook, listWebhookDeliveries, loadCatalog, loadPaymentMethods } from "./checkout.js";
+
+    const $ = (id) => document.getElementById(id);
+    const brl = (n) => "R$ " + Number(n).toFixed(2).replace(".", ",");
+    let cart = [];           // [{id,name,price,qty,serviceId?}]
+    let order = null;        // resultado de placeOrder
+    let pollTimer = null;
+    let PRODUCTS = CATALOG;   // catálogo atual (fixo até carregar serviços reais)
+    let catalogSource = "fallback";
+    let PAYMENT_METHODS = []; // formas de recebimento ativas (do /payment-methods)
+
+    // Config persistida
+    $("apiKey").value = localStorage.getItem("checkout_api_key") || "";
+    $("companyId").value = localStorage.getItem("checkout_company_id") || "";
+    if ($("apiKey").value) $("cfgCard").open = false;
+
+    // Validar chave: chama /me e lista as formas de recebimento disponíveis
+    $("validateBtn").addEventListener("click", async () => {
+      const apiKey = $("apiKey").value.trim();
+      const out = $("validateResult");
+      if (!apiKey) { out.innerHTML = `<span style="color:#f87171">Informe a chave.</span>`; return; }
+      out.innerHTML = `<span class="muted">Validando…</span>`;
+      const api = makeApi(apiKey, $("baseUrl").value.trim(), $("companyId").value.trim());
+      try {
+        const me = await api.me();
+        let methodsHtml = "";
+        try {
+          const pm = await api.lookups.paymentMethods({ active: "true" });
+          const items = pm.data || [];
+          methodsHtml = items.length
+            ? `<div style="margin-top:6px">Formas de recebimento ativas:<ul style="margin:4px 0 0;padding-left:18px">` +
+              items.map((m) => `<li>${m.name} <span class="muted">(${m.provider_name} · ${m.channel_key})</span></li>`).join("") + `</ul></div>`
+            : `<div class="muted" style="margin-top:6px">Nenhuma forma de recebimento ativa — a cobrança não poderá ser gerada (sem integração).</div>`;
+        } catch { /* scope charges:read pode faltar */ }
+        out.innerHTML = `<span style="color:#34d399">✅ Chave válida</span> — empresa <strong>${me.company?.name ?? "?"}</strong>, ` +
+          `${me.api_key?.scopes?.length ?? 0} scopes${me.api_key?.multi_company ? " · multi-empresa" : ""}.${methodsHtml}`;
+        localStorage.setItem("checkout_api_key", apiKey);
+        localStorage.setItem("checkout_company_id", $("companyId").value.trim());
+        refreshCatalog(); // troca o catálogo fixo pelos serviços cadastrados
+        refreshMethods(); // popula as formas de pagamento (somente as cadastradas)
+      } catch (e) {
+        out.innerHTML = `<span style="color:#f87171">❌ ${e.message}</span>`;
+      }
+    });
+
+    // Registrar webhook
+    $("webhookUrl").value = localStorage.getItem("checkout_webhook_url") || "";
+    $("registerWebhookBtn").addEventListener("click", async () => {
+      const apiKey = $("apiKey").value.trim();
+      const url = $("webhookUrl").value.trim();
+      const out = $("webhookResult");
+      if (!apiKey) { out.innerHTML = `<span style="color:#f87171">Informe a chave.</span>`; return; }
+      if (!url.startsWith("https://")) { out.innerHTML = `<span style="color:#f87171">URL deve começar com https://</span>`; return; }
+      out.innerHTML = `<span class="muted">Registrando…</span>`;
+      try {
+        const api = makeApi(apiKey, $("baseUrl").value.trim(), $("companyId").value.trim());
+        const r = await registerWebhook(api, url);
+        localStorage.setItem("checkout_webhook_url", url);
+        out.innerHTML = `<span style="color:#34d399">✅ Webhook registrado</span> — eventos: ${(r.webhook?.events || r.events || []).join(", ") || "charge.*"}.` +
+          (r.secret ? `<br/><span class="muted">secret (guarde): <code>${r.secret}</code></span>` : "");
+      } catch (e) {
+        out.innerHTML = `<span style="color:#f87171">❌ ${e.message}</span>`;
+      }
+    });
+
+    // --- Loja ---
+    function renderProducts() {
+      $("products").innerHTML = "";
+      for (const p of PRODUCTS) {
+        const el = document.createElement("div");
+        el.className = "product";
+        el.innerHTML = `<div class="emoji">${p.emoji || "📦"}</div><div class="name">${p.name}</div>
+          <div class="price">${brl(p.price)}</div>
+          <button class="sm" style="width:100%">Adicionar</button>`;
+        el.querySelector("button").addEventListener("click", () => addToCart(p));
+        $("products").appendChild(el);
+      }
+    }
+    function addToCart(p) {
+      const line = cart.find((l) => l.id === p.id);
+      if (line) line.qty++;
+      else cart.push({ id: p.id, name: p.name, price: p.price, qty: 1, serviceId: p.serviceId });
+      renderCart();
+    }
+
+    // Carrega o catálogo a partir dos serviços cadastrados (precisa da chave).
+    async function refreshCatalog() {
+      const apiKey = $("apiKey").value.trim();
+      if (!apiKey) return;
+      try {
+        const api = makeApi(apiKey, $("baseUrl").value.trim(), $("companyId").value.trim());
+        const { products, source } = await loadCatalog(api);
+        PRODUCTS = products; catalogSource = source;
+        renderProducts();
+      } catch { /* mantém catálogo fixo */ }
+    }
+
+    // Carrega as formas de recebimento cadastradas e popula o select.
+    async function refreshMethods() {
+      const apiKey = $("apiKey").value.trim();
+      if (!apiKey) return;
+      try {
+        const api = makeApi(apiKey, $("baseUrl").value.trim(), $("companyId").value.trim());
+        PAYMENT_METHODS = await loadPaymentMethods(api);
+      } catch { PAYMENT_METHODS = []; }
+      renderMethods();
+    }
+    function renderMethods() {
+      const sel = $("cMethod");
+      sel.innerHTML = "";
+      if (!PAYMENT_METHODS.length) {
+        sel.innerHTML = `<option value="">— nenhuma forma de recebimento cadastrada —</option>`;
+        $("methodHint").textContent = "Configure uma integração (Pix/boleto) para receber pagamentos.";
+      } else {
+        for (const m of PAYMENT_METHODS) {
+          const opt = document.createElement("option");
+          opt.value = m.channel;            // canal usado no POST /charges
+          opt.textContent = m.name;         // nome real cadastrado
+          sel.appendChild(opt);
+        }
+        $("methodHint").textContent = "";
+      }
+    }
+    function setQty(id, delta) {
+      const line = cart.find((l) => l.id === id);
+      if (!line) return;
+      line.qty += delta;
+      if (line.qty <= 0) cart = cart.filter((l) => l.id !== id);
+      renderCart();
+    }
+    function renderCart() {
+      const box = $("cartLines");
+      if (!cart.length) {
+        box.innerHTML = `<p class="muted">Carrinho vazio.</p>`;
+      } else {
+        box.innerHTML = "";
+        for (const l of cart) {
+          const row = document.createElement("div");
+          row.className = "cart-line";
+          row.innerHTML = `<span class="nm">${l.name}</span>
+            <span class="qty"><button>−</button><span>${l.qty}</span><button>+</button></span>
+            <span style="width:80px;text-align:right">${brl(l.price * l.qty)}</span>`;
+          const [minus, plus] = row.querySelectorAll("button");
+          minus.addEventListener("click", () => setQty(l.id, -1));
+          plus.addEventListener("click", () => setQty(l.id, +1));
+          box.appendChild(row);
+        }
+      }
+      $("cartTotal").textContent = brl(cartTotal(cart));
+      $("checkoutBtn").disabled = cart.length === 0;
+    }
+
+    function show(view) {
+      for (const v of ["storeView", "checkoutView", "payView", "resultView"]) {
+        $(v).style.display = v === view ? (v === "storeView" ? "grid" : "block") : "none";
+      }
+    }
+
+    // --- Navegação ---
+    $("checkoutBtn").addEventListener("click", () => {
+      $("payTotal").textContent = brl(cartTotal(cart));
+      show("checkoutView");
+    });
+    $("backBtn").addEventListener("click", () => show("storeView"));
+    $("newOrderBtn").addEventListener("click", () => { clearInterval(pollTimer); cart = []; order = null; renderCart(); show("storeView"); });
+
+    // --- Pagar ---
+    const logLine = (b, status, detail) => {
+      const colors = { run: "#94a3b8", ok: "#34d399", sim: "#fbbf24", fail: "#f87171" };
+      const div = document.createElement("div");
+      div.className = "li";
+      div.innerHTML = `<span class="b" style="color:${colors[status] || "#94a3b8"}">${status.toUpperCase()}</span><span>${detail}</span>`;
+      $("payLog").appendChild(div);
+    };
+
+    $("payBtn").addEventListener("click", async () => {
+      const apiKey = $("apiKey").value.trim();
+      if (!apiKey) { alert("Informe a API key na configuração."); $("cfgCard").open = true; return; }
+      const name = $("cName").value.trim();
+      if (!name) { alert("Informe o nome do cliente."); return; }
+      if (!$("cMethod").value) { alert("Nenhuma forma de recebimento cadastrada. Configure uma integração."); return; }
+      localStorage.setItem("checkout_api_key", apiKey);
+      localStorage.setItem("checkout_company_id", $("companyId").value.trim());
+
+      $("payLog").innerHTML = "";
+      $("payBtn").disabled = true;
+      const api = makeApi(apiKey, $("baseUrl").value.trim(), $("companyId").value.trim());
+      try {
+        order = await placeOrder(api, {
+          customer: { name, email: $("cEmail").value.trim(), document: $("cDoc").value.replace(/\D/g, ""), type: $("cType").value },
+          cart,
+          method: $("cMethod").value,
+          log: ({ status, detail }) => logLine("", status, detail),
+        });
+        renderPayment();
+        show("payView");
+      } catch (e) {
+        logLine("", "fail", e.message);
+      } finally {
+        $("payBtn").disabled = false;
+      }
+    });
+
+    // --- Tela de pagamento ---
+    function renderPayment() {
+      const ch = order.charge;
+      $("simBanner").style.display = order.simulated ? "block" : "none";
+      $("simReason").textContent = order.simulated ? `(${order.reason})` : "";
+      $("payMethodLabel").textContent = ch.method === "boleto" ? "— Boleto" : "— Pix";
+      setStatus(ch.status);
+
+      const isPix = ch.method !== "boleto";
+      $("pixBox").style.display = isPix ? "block" : "none";
+      $("boletoBox").style.display = isPix ? "none" : "block";
+
+      if (isPix) {
+        const code = ch.pix?.qr_code || "";
+        $("pixCode").textContent = code;
+        // Renderiza o QR: usa qr_url do provider, ou gera a imagem a partir do copia-e-cola.
+        const qrImg = ch.pix?.qr_url
+          || (code ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=1&data=${encodeURIComponent(code)}` : null);
+        $("qrBox").innerHTML = qrImg
+          ? `<img src="${qrImg}" alt="QR Code Pix" style="max-width:184px" />`
+          : `<span style="font-size:12px">QR indisponível<br/>use o copia-e-cola →</span>`;
+        $("copyPix").onclick = () => navigator.clipboard?.writeText(code).then(() => $("copyPix").textContent = "Copiado ✓");
+      } else {
+        $("boletoLine").textContent = ch.boleto?.digitable_line || "";
+        if (ch.boleto?.pdf_url) { $("boletoPdf").href = ch.boleto.pdf_url; $("boletoPdf").style.display = "inline-block"; }
+        else $("boletoPdf").style.display = "none";
+      }
+
+      // Nota de status conforme o tipo de cobrança
+      const isStatic = order.charge.provider === "pix_offline";
+      if (order.simulated) {
+        $("pollNote").textContent = "Modo simulação (sem integração): use os botões abaixo para simular o desfecho.";
+      } else if (isStatic) {
+        $("pollNote").textContent = "Pix estático: escaneie e pague no app do banco. A baixa é manual/por conciliação (sem confirmação automática). Consultando o status a cada 4s…";
+        startPolling(order.charge.id);
+      } else {
+        $("pollNote").textContent = "Aguardando confirmação do banco (via webhook)… consultando a cada 4s.";
+        startPolling(order.charge.id);
+      }
+
+      // Cobrança REAL (pix_offline com id de verdade) → confirmar/cancelar batem na API
+      // e o polling reflete sozinho na tela ("tipo pull"). Senão, simula localmente.
+      const isReal = !order.simulated && order.charge.id && !String(order.charge.id).startsWith("sim_");
+      $("simHint").innerHTML = isReal
+        ? "“Confirmar pagamento” e “Cancelar cobrança” são <strong>REAIS</strong> (API) — disparam webhook e o polling atualiza a tela. Expirar/Falhar são simulados."
+        : "Cobrança sem provedor real — todos os botões são simulados nesta tela.";
+
+      const apiNow = () => makeApi($("apiKey").value.trim(), $("baseUrl").value.trim(), $("companyId").value.trim());
+
+      $("simPaid").onclick = async () => {
+        if (!isReal) { setStatus("paid"); return finishWith("paid", { simulated: true }); }
+        $("simPaid").disabled = true;
+        try {
+          await confirmPayment(apiNow(), order.charge.id); // marca pago + dispara charge.paid
+          $("pollNote").textContent = "Pagamento confirmado no servidor (charge.paid disparado). Aguardando o polling atualizar a tela…";
+          refreshDeliveries();
+          // não chamamos finishWith aqui de propósito: o polling detecta 'paid' e troca a tela.
+        } catch (e) {
+          $("pollNote").textContent = "Falha ao confirmar: " + e.message;
+          $("simPaid").disabled = false;
+        }
+      };
+      $("simExpire").onclick = () => { setStatus("expired"); finishWith("expired", { simulated: true }); };
+      $("simFail").onclick   = () => { setStatus("failed"); finishWith("failed", { simulated: true }); };
+      $("simCancel").onclick = async () => {
+        if (!isReal) { setStatus("cancelled"); return finishWith("cancelled", { simulated: true }); }
+        $("simCancel").disabled = true;
+        try {
+          await cancelCharge(apiNow(), order.charge.id); // o polling detecta 'cancelled'
+          $("pollNote").textContent = "Cobrança cancelada no servidor. Aguardando o polling atualizar a tela…";
+          refreshDeliveries();
+        } catch (e) {
+          $("pollNote").textContent = "Falha ao cancelar: " + e.message;
+          $("simCancel").disabled = false;
+        }
+      };
+
+      refreshDeliveries();
+    }
+
+    // Mostra as últimas entregas de webhook (valida o disparo do charge.*)
+    async function refreshDeliveries() {
+      if (order?.simulated) { $("hooksList").textContent = "—  (cobrança simulada não dispara webhook)"; return; }
+      try {
+        const r = await listWebhookDeliveries(apiNowGlobal());
+        const items = r.data || [];
+        $("hooksList").innerHTML = items.length
+          ? items.map((d) => {
+              const ev = d.event || d.payload?.event || "?";
+              const st = d.status || "?";
+              const color = st === "delivered" ? "#34d399" : st === "failed" ? "#f87171" : "#fbbf24";
+              return `<div>• <code>${ev}</code> — <span style="color:${color}">${st}</span> <span class="muted">(tentativas: ${d.attempts ?? 0})</span></div>`;
+            }).join("")
+          : "Nenhuma entrega ainda. Registre um webhook e confirme um pagamento.";
+      } catch (e) {
+        $("hooksList").textContent = "Não foi possível listar entregas: " + e.message;
+      }
+    }
+    const apiNowGlobal = () => makeApi($("apiKey").value.trim(), $("baseUrl").value.trim(), $("companyId").value.trim());
+
+    function setStatus(status) {
+      const paid = status === "paid";
+      const pill = $("statusPill");
+      pill.textContent = paid ? "pago" : status;
+      pill.className = "pill " + (paid ? "paid" : "pending");
+    }
+
+    function startPolling(chargeId) {
+      const api = makeApi($("apiKey").value.trim(), $("baseUrl").value.trim(), $("companyId").value.trim());
+      clearInterval(pollTimer);
+      pollTimer = setInterval(async () => {
+        try {
+          const ch = await refreshCharge(api, chargeId);
+          setStatus(ch.status);
+          if (ch.status === "paid") { order.charge = ch; finishWith("paid"); }
+          else if (["cancelled", "expired", "failed"].includes(ch.status)) { order.charge = ch; finishWith(ch.status); }
+        } catch { /* mantém tentando */ }
+      }, 4000);
+    }
+
+    // Tela de resultado (sucesso ou erro), vinda do polling ou da simulação.
+    function finishWith(status, opts = {}) {
+      clearInterval(pollTimer);
+      const map = {
+        paid:      ["✅", "Pagamento confirmado!", "#34d399"],
+        cancelled: ["🚫", "Cobrança cancelada",    "#f87171"],
+        expired:   ["⏰", "Cobrança expirada",     "#fbbf24"],
+        failed:    ["❌", "Pagamento falhou",       "#f87171"],
+      };
+      const [icon, title, color] = map[status] || ["ℹ️", status, "#94a3b8"];
+      $("resultIcon").textContent = icon;
+      $("resultTitle").textContent = title;
+      $("resultTitle").style.color = color;
+      $("resultDetail").innerHTML = `Fatura <code>${order.invoice.id}</code> · ${brl(order.total)}` +
+        (opts.simulated ? "<br/><span class='muted'>(evento simulado — nenhum valor foi movimentado)</span>" : "");
+      show("resultView");
+    }
+
+    renderProducts();
+    renderCart();
+    if ($("apiKey").value) { refreshCatalog(); refreshMethods(); } // se já há chave salva, usa dados reais
+  </script>
+</body>
+</html>

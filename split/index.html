@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Comando.One API — Split de Pagamentos</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #0b1120; color: #e2e8f0; font: 14px/1.5 ui-sans-serif, system-ui, sans-serif; }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 28px 20px 60px; }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    h2 { font-size: 15px; margin: 0 0 12px; color: #cbd5e1; }
+    p.sub { color: #94a3b8; margin: 0 0 20px; }
+    .card { background: #111827; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+    label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 4px; }
+    input { width: 100%; background: #0b1120; border: 1px solid rgba(255,255,255,.12); color: #e2e8f0; border-radius: 8px; padding: 9px 11px; font: inherit; margin-bottom: 12px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .row > div { flex: 1; min-width: 150px; }
+    button { background: #2563eb; color: #fff; border: 0; border-radius: 8px; padding: 10px 18px; font: inherit; font-weight: 600; cursor: pointer; }
+    button.ghost { background: rgba(255,255,255,.06); }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .muted { color: #94a3b8; }
+    .log { font-size: 13px; }
+    .log .li { display: flex; gap: 10px; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,.05); }
+    .log .li .b { width: 26px; flex-shrink: 0; text-align: center; }
+    code { color: #93c5fd; }
+    .err { color: #f87171; }
+    .kv { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,.06); }
+    .kv .v { color: #93c5fd; font-family: ui-monospace, monospace; font-size: 12.5px; }
+    .bar { display: flex; height: 26px; border-radius: 6px; overflow: hidden; margin: 10px 0; }
+    .bar .seg { display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; }
+    .result { display: none; }
+    details summary { cursor: pointer; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>🅿️ Split de Pagamentos — Comando.One API</h1>
+    <p class="sub">Cenário <strong>hub de estacionamento</strong>: o motorista paga, e o valor é dividido
+      entre o <strong>hub</strong> (comissão %) e o <strong>estacionamento</strong> (fornecedor) — repasse Pix
+      automático. Cria a regra de split, uma regra <strong>por parcela</strong> (recurso só da API) e simula
+      uma venda. O split é <strong>calculado na liquidação</strong>; o <strong>repasse Pix</strong> ao fornecedor
+      exige uma integração bancária (Inter/C6) — sem ela, a fatia do fornecedor fica <code>released</code> (repasse pendente).</p>
+
+    <details class="card" id="cfgCard" open>
+      <summary><strong>Configuração da API</strong></summary>
+      <div style="margin-top:12px">
+        <label>API Key (cmd_live_...)</label>
+        <input id="apiKey" type="password" placeholder="cmd_live_..." autocomplete="off" />
+        <div class="row">
+          <div><label>Base URL</label><input id="baseUrl" value="https://api.comando.one/v1" /></div>
+          <div><label>X-Company-Id (opcional)</label><input id="companyId" placeholder="empresa padrão da chave" /></div>
+        </div>
+        <p class="muted" style="margin:0;font-size:12px">Scopes: <code>split:list</code>, <code>split:create</code>, <code>split:update</code>, <code>split:delete</code>, <code>suppliers:write</code>, <code>customers:write</code>, <code>invoices:create</code>, <code>charges:create</code>.</p>
+      </div>
+    </details>
+
+    <div class="card">
+      <h2>Parâmetros do split</h2>
+      <div class="row">
+        <div><label>Comissão do hub (%)</label><input id="platformPct" type="number" value="15" min="0" max="100" /></div>
+        <div><label>Valor da estadia (R$)</label><input id="amount" type="number" value="20" min="1" /></div>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <button id="runBtn" style="flex:2">Rodar split</button>
+        <button id="cleanBtn" class="ghost" style="flex:1" disabled>Limpar dados criados</button>
+      </div>
+      <p class="muted" style="font-size:12px;margin:8px 0 0">A execução do split é calculada por cron (~1 min após a liquidação). A demo aguarda até ~90s.</p>
+    </div>
+
+    <div class="card">
+      <h2>Progresso</h2>
+      <div class="log" id="log"><p class="muted">Preencha a chave e clique em "Rodar split".</p></div>
+    </div>
+
+    <div class="card result" id="resultCard">
+      <h2>Divisão do recebimento</h2>
+      <div id="bar"></div>
+      <div id="resultBody"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import {
+      makeApi, setupScenario, createInstallmentRule, validateRuleScenarios, simulateSale,
+      waitForExecution, summarizeExecution, teardown, fmtCents,
+    } from "./split.js?v=5";
+
+    const $ = (id) => document.getElementById(id);
+    const LS = "split_api_key";
+    $("apiKey").value = localStorage.getItem(LS) || "";
+    const ICON = { run: "··", ok: "✅", sim: "🟡", fail: "❌", skip: "⏭️" };
+    let api = null, refs = {};
+
+    function client() {
+      const key = $("apiKey").value.trim();
+      if (!key) throw new Error("Informe a API Key.");
+      localStorage.setItem(LS, key);
+      return makeApi(key, $("baseUrl").value.trim() || undefined, $("companyId").value.trim() || undefined);
+    }
+    function logLine({ status, detail }) {
+      const div = document.createElement("div");
+      div.className = "li";
+      div.innerHTML = `<span class="b">${ICON[status] || "··"}</span><span>${detail}</span>`;
+      $("log").appendChild(div);
+    }
+    const COLORS = ["#2563eb", "#16a34a", "#9333ea", "#ea580c"];
+
+    $("runBtn").onclick = async () => {
+      $("log").innerHTML = ""; $("resultCard").style.display = "none"; $("runBtn").disabled = true; refs = {};
+      try {
+        api = client();
+        const platformPercent = Number($("platformPct").value);
+        const amount = Number($("amount").value);
+
+        const setup = await setupScenario(api, { platformPercent, log: logLine });
+        Object.assign(refs, setup);
+        const inst = await createInstallmentRule(api, { supplier: setup.supplier, paymentMethod: setup.paymentMethod, log: logLine });
+        refs.installmentRule = inst.rule;
+
+        const v = await validateRuleScenarios(api, { supplier: setup.supplier, log: logLine });
+        logLine({ status: v.ok === v.total ? "ok" : "fail", detail: `Validação de tipos de regra: ${v.ok}/${v.total}` });
+
+        const sale = await simulateSale(api, { amount, log: logLine });
+        Object.assign(refs, { customer: sale.customer, invoice: sale.invoice });
+
+        let exec = null;
+        if (!sale.simulated) {
+          exec = await waitForExecution(api, { invoiceId: sale.invoice.id, log: logLine });
+          refs.execution = exec;
+        }
+
+        if (exec) {
+          const rows = summarizeExecution(exec);
+          const total = exec.gross_cents || 1;
+          $("bar").innerHTML = `<div class="bar">${rows.map((s, i) =>
+            `<div class="seg" style="width:${Math.max(6, (s.gross / total) * 100)}%;background:${COLORS[i % COLORS.length]}">${Math.round((s.gross / total) * 100)}%</div>`).join("")}</div>`;
+          const noIntegration = rows.some((s) => /integra|conta banc|pendente/i.test(s.error || ""));
+          $("resultBody").innerHTML = rows.map((s) =>
+            `<div class="kv"><span>${s.who}${s.error ? ` <span class="muted" style="font-size:11px">— ${s.error}</span>` : ""}</span>`
+            + `<span class="v">${fmtCents(s.net)} · ${s.status}</span></div>`).join("")
+            + `<div class="kv"><span><strong>Total</strong></span><span class="v">bruto ${fmtCents(exec.gross_cents)} · ${exec.status}</span></div>`
+            + (noIntegration
+                ? `<p class="muted" style="margin-top:10px">🟢 O split foi <strong>calculado e dividido corretamente</strong> (${rows.length} fatias). A fatia do <strong>hub</strong> fica <code>paid</code> (retida pela empresa). A fatia do <strong>fornecedor</strong> fica <code>released</code> (repasse <strong>pendente</strong>): esta empresa não tem integração bancária (Inter/C6) para enviar o Pix — com uma integração ativa, o repasse sai automático.</p>`
+                : "");
+        } else {
+          $("bar").innerHTML = "";
+          $("resultBody").innerHTML = `<p class="muted">🟡 ${sale.simulated ? "Recebimento não liquidou (sem integração bancária) — o split dispara na liquidação." : "Split ainda não calculado (cron ~1 min). As regras foram criadas com sucesso."}</p>`;
+        }
+        $("resultCard").style.display = "block";
+        $("cleanBtn").disabled = false;
+      } catch (e) {
+        logLine({ status: "fail", detail: `<span class="err">${e.message}</span>` });
+      } finally {
+        $("runBtn").disabled = false;
+      }
+    };
+
+    $("cleanBtn").onclick = async () => {
+      $("cleanBtn").disabled = true;
+      await teardown(api, refs, logLine);
+      refs = {};
+    };
+  </script>
+</body>
+</html>

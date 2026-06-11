@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Comando.One API — NFS-e em lote</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #0b1120; color: #e2e8f0; font: 14px/1.5 ui-sans-serif, system-ui, sans-serif; }
+    .wrap { max-width: 800px; margin: 0 auto; padding: 28px 20px 60px; }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    h2 { font-size: 15px; margin: 0 0 12px; color: #cbd5e1; }
+    p.sub { color: #94a3b8; margin: 0 0 20px; }
+    .card { background: #111827; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+    label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 4px; }
+    input { width: 100%; background: #0b1120; border: 1px solid rgba(255,255,255,.12); color: #e2e8f0; border-radius: 8px; padding: 9px 11px; font: inherit; margin-bottom: 12px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .row > div { flex: 1; min-width: 150px; }
+    button { background: #2563eb; color: #fff; border: 0; border-radius: 8px; padding: 10px 18px; font: inherit; font-weight: 600; cursor: pointer; }
+    button.ghost { background: rgba(255,255,255,.06); }
+    button.sm { padding: 5px 11px; font-size: 13px; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .muted { color: #94a3b8; }
+    .pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; }
+    .ok { background: rgba(16,185,129,.14); color: #34d399; }
+    .skip { background: rgba(245,158,11,.14); color: #fbbf24; }
+    .fail { background: rgba(248,113,113,.14); color: #f87171; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid rgba(255,255,255,.06); }
+    th { color: #94a3b8; font-weight: 600; }
+    td.num { text-align: right; font-family: ui-monospace, monospace; }
+    code { color: #93c5fd; }
+    .err { color: #f87171; }
+    details summary { cursor: pointer; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>🧾 NFS-e em lote — Comando.One API</h1>
+    <p class="sub">Descobre <strong>faturas pagas sem nota</strong> (cruza com o histórico de NFS-e) e permite
+      emitir em lote. Sem configuração fiscal na empresa, a emissão retorna <strong>pulado (422)</strong>.</p>
+
+    <details class="card" id="cfgCard" open>
+      <summary><strong>Configuração da API</strong></summary>
+      <div style="margin-top:12px">
+        <label>API Key (cmd_live_...)</label>
+        <input id="apiKey" type="password" placeholder="cmd_live_..." autocomplete="off" />
+        <div class="row">
+          <div><label>Base URL</label><input id="baseUrl" value="https://api.comando.one/v1" /></div>
+          <div><label>X-Company-Id (opcional)</label><input id="companyId" placeholder="empresa padrão da chave" /></div>
+        </div>
+        <p class="muted" style="margin:0;font-size:12px">Scopes: <code>invoices:read</code>, <code>nfse:read</code>, <code>nfse:emitir</code>.</p>
+      </div>
+    </details>
+
+    <div class="card">
+      <h2>Faturas pagas pendentes de nota</h2>
+      <div class="row" style="align-items:flex-end">
+        <div style="flex:0"><button id="scanBtn">Buscar pendentes</button></div>
+        <div style="flex:0"><button id="emitAllBtn" class="ghost" disabled>Emitir todas</button></div>
+        <div style="flex:1; text-align:right" class="muted" id="summary"></div>
+      </div>
+      <div id="status" class="muted" style="font-size:12.5px;margin-bottom:8px"></div>
+      <table id="tbl" style="display:none">
+        <thead><tr><th>Fatura</th><th class="num">Valor</th><th>Status</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script type="module">
+    import { makeApi, getPendingInvoices, emitOne, fmtMoney } from "./nfse.js";
+
+    const $ = (id) => document.getElementById(id);
+    const LS = "nfse_api_key";
+    $("apiKey").value = localStorage.getItem(LS) || "";
+
+    let api = null, pending = [];
+    function client() {
+      const key = $("apiKey").value.trim();
+      if (!key) throw new Error("Informe a API Key.");
+      localStorage.setItem(LS, key);
+      return makeApi(key, $("baseUrl").value.trim() || undefined, $("companyId").value.trim() || undefined);
+    }
+
+    function renderRows() {
+      const tb = $("tbl").querySelector("tbody");
+      tb.innerHTML = pending.map((inv) =>
+        `<tr data-id="${inv.id}"><td>${inv.title || inv.id}</td><td class="num">${fmtMoney(inv.amount)}</td><td class="st"><span class="muted">pendente</span></td><td style="text-align:right"><button class="sm emitOne" data-id="${inv.id}">Emitir</button></td></tr>`
+      ).join("");
+      for (const b of tb.querySelectorAll(".emitOne")) b.onclick = () => emitInvoice(b.dataset.id);
+      $("tbl").style.display = pending.length ? "table" : "none";
+    }
+
+    function setRowStatus(id, kind, text) {
+      const row = $("tbl").querySelector(`tr[data-id="${id}"]`);
+      if (!row) return;
+      row.querySelector(".st").innerHTML = `<span class="pill ${kind}">${text}</span>`;
+      const btn = row.querySelector(".emitOne");
+      if (btn && kind === "ok") btn.disabled = true;
+    }
+
+    $("scanBtn").onclick = async () => {
+      $("status").textContent = "Buscando…";
+      $("emitAllBtn").disabled = true;
+      try {
+        api = client();
+        const r = await getPendingInvoices(api, { log: ({ detail }) => { $("status").textContent = detail; } });
+        pending = r.pending;
+        $("summary").textContent = `${r.paid.length} paga(s) · ${r.emittedIds.size} com nota · ${pending.length} pendente(s)`;
+        $("status").textContent = pending.length ? "" : "Nenhuma fatura paga pendente de nota.";
+        renderRows();
+        $("emitAllBtn").disabled = !pending.length;
+      } catch (e) {
+        $("status").innerHTML = `<span class="err">${e.message}</span>`;
+      }
+    };
+
+    async function emitInvoice(id) {
+      setRowStatus(id, "skip", "emitindo…");
+      const r = await emitOne(api, id);
+      if (r.ok) setRowStatus(id, "ok", `nota ${r.numero || r.status || "emitida"}`);
+      else if (r.skipped) setRowStatus(id, "skip", `pulado: ${r.reason}`);
+      else setRowStatus(id, "fail", `erro: ${r.reason}`);
+    }
+
+    $("emitAllBtn").onclick = async () => {
+      $("emitAllBtn").disabled = true;
+      for (const inv of pending) await emitInvoice(inv.id);
+    };
+  </script>
+</body>
+</html>

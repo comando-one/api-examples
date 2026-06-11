@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Comando.One API — Repasse a fornecedor</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #0b1120; color: #e2e8f0; font: 14px/1.5 ui-sans-serif, system-ui, sans-serif; }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 28px 20px 60px; }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    h2 { font-size: 15px; margin: 0 0 12px; color: #cbd5e1; }
+    p.sub { color: #94a3b8; margin: 0 0 20px; }
+    .card { background: #111827; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+    label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 4px; }
+    input, select { width: 100%; background: #0b1120; border: 1px solid rgba(255,255,255,.12); color: #e2e8f0; border-radius: 8px; padding: 9px 11px; font: inherit; margin-bottom: 12px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .row > div { flex: 1; min-width: 150px; }
+    button { background: #2563eb; color: #fff; border: 0; border-radius: 8px; padding: 10px 18px; font: inherit; font-weight: 600; cursor: pointer; }
+    button.ghost { background: rgba(255,255,255,.06); }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .muted { color: #94a3b8; }
+    .banner { background: rgba(245,158,11,.10); border: 1px solid rgba(245,158,11,.3); color: #fcd34d; border-radius: 8px; padding: 10px 12px; font-size: 12.5px; margin-bottom: 14px; }
+    .log { font-size: 13px; }
+    .log .li { display: flex; gap: 10px; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,.05); }
+    .log .li .b { width: 26px; flex-shrink: 0; text-align: center; }
+    code { color: #93c5fd; }
+    .err { color: #f87171; }
+    .kv { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,.06); }
+    .kv .v { color: #93c5fd; font-family: ui-monospace, monospace; font-size: 12.5px; }
+    .result { display: none; }
+    details summary { cursor: pointer; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>💸 Repasse a fornecedor — Comando.One API</h1>
+    <p class="sub">Contas a pagar ponta a ponta: cria <strong>fornecedor + Pix</strong>, lança a
+      <strong>conta a pagar com parcelas</strong>, registra a <strong>despesa</strong> e tenta o
+      <strong>payout Pix</strong>. Sem integração bancária, entra em modo simulação.</p>
+
+    <details class="card" id="cfgCard" open>
+      <summary><strong>Configuração da API</strong></summary>
+      <div style="margin-top:12px">
+        <label>API Key (cmd_live_...)</label>
+        <input id="apiKey" type="password" placeholder="cmd_live_..." autocomplete="off" />
+        <div class="row">
+          <div><label>Base URL</label><input id="baseUrl" value="https://api.comando.one/v1" /></div>
+          <div><label>X-Company-Id (opcional)</label><input id="companyId" placeholder="empresa padrão da chave" /></div>
+        </div>
+        <p class="muted" style="margin:0;font-size:12px">Scopes: <code>suppliers:write</code>, <code>purchase_invoices:create</code>, <code>expenses:write</code>, <code>payouts:create</code>, <code>bank_accounts:read</code>.</p>
+      </div>
+    </details>
+
+    <div class="card">
+      <h2>Dados do repasse</h2>
+      <label>Nome do fornecedor</label>
+      <input id="sName" value="[DEMO] Fornecedor Repasse" />
+      <div class="row">
+        <div><label>CNPJ/CPF</label><input id="sDoc" value="98765432000110" /></div>
+        <div><label>Chave Pix</label><input id="pixKey" value="fornecedor@example.com" /></div>
+        <div>
+          <label>Tipo da chave</label>
+          <select id="pixType">
+            <option value="email">E-mail</option>
+            <option value="cpf">CPF</option>
+            <option value="cnpj">CNPJ</option>
+            <option value="phone">Telefone</option>
+            <option value="random">Aleatória</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div><label>Valor total (R$)</label><input id="amount" type="number" value="900" /></div>
+        <div><label>Parcelas</label><input id="installments" type="number" value="3" min="1" max="12" /></div>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <button id="runBtn" style="flex:2">Rodar repasse</button>
+        <button id="cleanBtn" class="ghost" style="flex:1" disabled>Limpar dados criados</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Progresso</h2>
+      <div class="log" id="log"><p class="muted">Preencha e clique em "Rodar repasse".</p></div>
+    </div>
+
+    <div class="card result" id="resultCard">
+      <h2>Resultado</h2>
+      <div id="resultBody"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { makeApi, runPayable, cleanupPayable, fmtMoney } from "./payable.js";
+
+    const $ = (id) => document.getElementById(id);
+    const LS = "payable_api_key";
+    $("apiKey").value = localStorage.getItem(LS) || "";
+
+    const ICON = { run: "··", ok: "✅", sim: "🟡", fail: "❌", skip: "⏭️" };
+    let api = null, lastResult = null;
+
+    function client() {
+      const key = $("apiKey").value.trim();
+      if (!key) throw new Error("Informe a API Key.");
+      localStorage.setItem(LS, key);
+      return makeApi(key, $("baseUrl").value.trim() || undefined, $("companyId").value.trim() || undefined);
+    }
+
+    function logLine({ status, detail }) {
+      const div = document.createElement("div");
+      div.className = "li";
+      div.innerHTML = `<span class="b">${ICON[status] || "··"}</span><span>${detail}</span>`;
+      $("log").appendChild(div);
+    }
+
+    $("runBtn").onclick = async () => {
+      $("log").innerHTML = "";
+      $("resultCard").style.display = "none";
+      $("runBtn").disabled = true;
+      try {
+        api = client();
+        lastResult = await runPayable(api, {
+          supplier: { name: $("sName").value.trim(), document: $("sDoc").value.trim(), pixKey: $("pixKey").value.trim(), pixKeyType: $("pixType").value },
+          amount: Number($("amount").value),
+          installments: Number($("installments").value),
+          log: logLine,
+        });
+        $("resultBody").innerHTML = `
+          <div class="kv"><span>Fornecedor</span><span class="v">${lastResult.supplier.id}</span></div>
+          <div class="kv"><span>Conta a pagar</span><span class="v">${lastResult.purchaseInvoice.id} · ${fmtMoney(lastResult.purchaseInvoice.amount)}</span></div>
+          <div class="kv"><span>Despesa</span><span class="v">${lastResult.expense.id}</span></div>
+          <div class="kv"><span>Payout</span><span class="v">${lastResult.payout.id} · ${lastResult.payout.status}${lastResult.simulated ? " (SIMULADO)" : ""}</span></div>
+          ${lastResult.simulated ? `<p class="muted" style="margin-top:10px">🟡 ${lastResult.reason}</p>` : ""}`;
+        $("resultCard").style.display = "block";
+        $("cleanBtn").disabled = false;
+      } catch (e) {
+        logLine({ status: "fail", detail: `<span class="err">${e.message}</span>` });
+      } finally {
+        $("runBtn").disabled = false;
+      }
+    };
+
+    $("cleanBtn").onclick = async () => {
+      if (!lastResult) return;
+      $("cleanBtn").disabled = true;
+      await cleanupPayable(api, lastResult, logLine);
+      lastResult = null;
+    };
+  </script>
+</body>
+</html>

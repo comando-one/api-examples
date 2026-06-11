@@ -1,4 +1,16 @@
-# Exemplos da API Pública do Comando.One
+<p align="center">
+  <img src="assets/logo-comando.png" alt="Comando.One" width="360">
+</p>
+
+<h1 align="center">Exemplos da API Pública</h1>
+
+<p align="center">
+  <a href="https://comando.one"><strong>Site</strong></a> ·
+  <a href="https://comando.one/docs"><strong>Documentação</strong></a> ·
+  <a href="https://api.comando.one"><strong>API</strong></a> ·
+  <a href="https://www.npmjs.com/package/@comando.one/sdk"><strong>SDK</strong></a> ·
+  <a href="https://www.npmjs.com/package/@comando.one/mcp-server"><strong>MCP</strong></a>
+</p>
 
 Coleção de **demos prontos** que consomem a API pública (`https://api.comando.one`)
 do jeito que um integrador real usaria — recebimento, contas a pagar, split,
@@ -212,3 +224,9 @@ criar o cliente.
 
 > ✅ Já implementados: Checkout, Portal do cliente, Repasse a fornecedores, Split de pagamentos,
 > Proposta→Contrato, Mini DRE, NFS-e em lote, Chatbot e MCP-chat.
+
+---
+
+<p align="center">
+  Desenvolvido por <a href="https://orbitaldev.com.br"><strong>Orbital Tecnologia</strong></a>
+</p>

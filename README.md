@@ -132,10 +132,10 @@ await api.purchaseInvoices.create({
 ### Namespaces
 
 `me` · `companies` · `customers` (+ `addresses`, `contacts`, `invoices/contracts/proposals`) ·
-`suppliers` (+ `paymentMethods`) · `services` · `expenses` · `proposals` (+ `send`) ·
-`contracts` · `invoices` (+ `cancel`) · `purchaseInvoices` (+ `cancel`) ·
-`charges` (+ `cancel`/`refund`) · `payouts` (+ `cancel`/`sync`) · `nfse` (+ `emit`/`cancel`) ·
-`finance` (`ledger`/`natures`/`createMovement`/`deleteMovement`) ·
+`suppliers` (+ `paymentMethods`) · `services` · `serviceCategories` (CRUD) · `expenses` · `proposals` (+ `send`) ·
+`contracts` (+ `pause`/`resume`) · `invoices` (+ `cancel`/`delete`) · `purchaseInvoices` (+ `cancel`) ·
+`charges` (+ `cancel`/`refund`) · `payouts` (+ `cancel`/`sync`) · `nfse` (+ `emit`/`cancel`/`sync`/`files`) ·
+`finance` (`ledger`/`natures`/`createMovement`/`deleteMovement`) · `reports` (`agingActions`/`cashflowForecast`) · `audit` (`timeline`) ·
 `lookups` (`costCenters`/`paymentConditions`/`serviceUnits`/`paymentMethods`/`paymentMethodsAp`) ·
 `bankAccounts` · `webhooks` (+ `deliveries`).
 

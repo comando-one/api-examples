@@ -83,6 +83,12 @@ Cada demo é uma pasta com até 3 arquivos: `<lib>.js` (lógica reutilizável No
 - **`mcp-chat/`** — mesma ideia no terminal (CLI), via o pacote npm `@comando.one/mcp-server` (stdio).
   `node mcp-chat/chat.mjs`
 
+**Operacional (somente leitura)**
+- **`operational/`** — percorre os sete módulos legíveis desde 2026-09-01 (caixa de entrada,
+  conciliação, faturas de cartão, DDA, recorrentes, insumos, notificações) e mostra o que a
+  empresa tem em cada um. Módulo sem o scope na chave aparece como pulado, dizendo **qual**
+  scope falta — é a forma mais direta de ver o que cada scope libera. `node operational/run.js`
+
 **Ferramentas**
 - **`webhook-receiver/`** — receiver de webhook (Node, zero deps): recebe `charge.*`, valida a
   assinatura HMAC e mostra um feed ao vivo. `node webhook-receiver/server.js`
@@ -131,13 +137,24 @@ await api.purchaseInvoices.create({
 
 ### Namespaces
 
-`me` · `companies` · `customers` (+ `addresses`, `contacts`, `invoices/contracts/proposals`) ·
-`suppliers` (+ `paymentMethods`) · `services` · `serviceCategories` (CRUD) · `expenses` · `proposals` (+ `send`) ·
-`contracts` (+ `pause`/`resume`) · `invoices` (+ `cancel`/`delete`) · `purchaseInvoices` (+ `cancel`) ·
-`charges` (+ `cancel`/`refund`) · `payouts` (+ `cancel`/`sync`) · `nfse` (+ `emit`/`cancel`/`sync`/`files`) ·
-`finance` (`ledger`/`natures`/`createMovement`/`deleteMovement`) · `reports` (`agingActions`/`cashflowForecast`) · `audit` (`timeline`) ·
+**Cadastros e vendas** — `companies` · `customers` (+ `addresses`, `contacts`, `invoices/contracts/proposals`) ·
+`suppliers` (+ `paymentMethods`) · `services` · `serviceCategories` (CRUD) · `insumos` · `proposals` (+ `send`) ·
+`contracts` (+ `pause`/`resume`).
+
+**Financeiro** — `invoices` (+ `cancel`/`delete`, baixa e estorno de parcela) · `purchaseInvoices` (+ `cancel`) ·
+`expenses` · `charges` (+ `cancel`/`refund`) · `payouts` (+ `cancel`/`sync`) ·
+`split` (`rules`/`executions`/`items`) · `finance` (`ledger`/`natures`/`createMovement`/`deleteMovement`) ·
+`costCenters` · `bankAccounts` · `marketIndices`.
+
+**Fiscal e documentos** — `nfse` (+ `emit`/`cancel`/`sync`/`files`) · `documents` (`analyze`/`search`).
+
+**Operacional (somente leitura)** — `inbox` (`messages`/`documents`) ·
+`reconciliation` (`entries`/`periods`) · `cardStatements` · `ddaBoletos` ·
+`recurringExpenses` · `recurringPurchaseInvoices` · `notifications`.
+
+**Plataforma** — `me()` · `reports` (`agingActions`/`cashflowForecast`) · `audit` (`timeline`) · `reminders` ·
 `lookups` (`costCenters`/`paymentConditions`/`serviceUnits`/`paymentMethods`/`paymentMethodsAp`) ·
-`bankAccounts` · `webhooks` (+ `deliveries`).
+`webhooks` (+ `deliveries`).
 
 ---
 
@@ -146,8 +163,9 @@ await api.purchaseInvoices.create({
 Duas formas de conectar uma IA ao Comando.One:
 
 - **Local (stdio)** — pacote [`@comando.one/mcp-server`](https://www.npmjs.com/package/@comando.one/mcp-server)
-  no `claude_desktop_config.json` (`command: npx -y @comando.one/mcp-server`). ~50 ferramentas
-  curadas com guardas de segurança.
+  no `claude_desktop_config.json` (`command: npx -y @comando.one/mcp-server`).
+  **159 ferramentas** — 157 curadas mais `lookups` e `comando_request` —, liberadas conforme
+  os scopes da chave e com guardas de segurança (destrutiva exige `confirm`).
 - **Remoto (streaming)** — endpoint **`https://api.comando.one/mcp`** (MCP Streamable HTTP),
   autenticado com `Authorization: Bearer cmd_live_…`. Não instala nada; funciona com Claude
   Desktop (conector remoto), curl ou navegador.

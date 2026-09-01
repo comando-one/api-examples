@@ -229,6 +229,32 @@ export class ComandoApi {
       get:  (id, opts) => g.get(`/bank-accounts/${id}`, opts),
     };
 
+    // Módulos operacionais (somente leitura, desde 2026-09-01): caixa de entrada,
+    // conciliação, cartão, DDA, recorrentes, insumos e notificações. Escrever neles mexe
+    // em dinheiro e ainda não está exposto na API.
+    const leitura = (base) => ({
+      list:    (params, opts) => g.get(`${base}${qs(params)}`, opts),
+      listAll: (params, opts) => g.listAll(base, params, opts),
+      get:     (id, opts) => g.get(`${base}/${id}`, opts),
+    });
+
+    this.inbox = {
+      messages:  leitura("/inbox/messages"),
+      documents: leitura("/inbox/documents"),
+    };
+
+    this.reconciliation = {
+      entries: leitura("/reconciliation/entries"),
+      periods: leitura("/reconciliation/periods"),
+    };
+
+    this.cardStatements            = leitura("/card-statements");
+    this.ddaBoletos                = leitura("/dda-boletos");
+    this.recurringExpenses         = leitura("/recurring-expenses");
+    this.recurringPurchaseInvoices = leitura("/recurring-purchase-invoices");
+    this.insumos                   = leitura("/insumos");
+    this.notifications             = leitura("/notifications");
+
     this.webhooks = {
       get:    (opts) => g.get("/webhooks/payments", opts),
       set:    (data, opts) => g.request("PUT", "/webhooks/payments", { ...opts, body: data }),

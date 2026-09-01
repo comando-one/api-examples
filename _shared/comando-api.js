@@ -229,6 +229,29 @@ export class ComandoApi {
       get:  (id, opts) => g.get(`/bank-accounts/${id}`, opts),
     };
 
+    // Faltavam no client enxuto, embora o SDK oficial os tenha desde sempre — o comentário
+    // acima promete "cobertura total" e a promessa não estava sendo cumprida.
+    this.serviceCategories = crud("/service-categories", { del: true });
+    this.costCenters       = crud("/cost-centers", { del: true });
+    this.reminders         = crud("/reminders", { del: true });
+
+    this.reports = {
+      agingActions:     (params, opts) => g.get(`/reports/aging-actions${qs(params)}`, opts),
+      cashflowForecast: (params, opts) => g.get(`/reports/cashflow-forecast${qs(params)}`, opts),
+    };
+
+    this.audit = {
+      timeline: (params, opts) => g.get(`/audit/timeline${qs(params)}`, opts),
+    };
+
+    this.documents = {
+      analyze: (data, opts) => g.post("/documents/analyze", data, opts),
+    };
+
+    this.marketIndices = {
+      get: (params, opts) => g.get(`/market-indices${qs(params)}`, opts),
+    };
+
     // Módulos operacionais (somente leitura, desde 2026-09-01): caixa de entrada,
     // conciliação, cartão, DDA, recorrentes, insumos e notificações. Escrever neles mexe
     // em dinheiro e ainda não está exposto na API.

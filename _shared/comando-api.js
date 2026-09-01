@@ -262,21 +262,50 @@ export class ComandoApi {
     });
 
     this.inbox = {
-      messages:  leitura("/inbox/messages"),
+      messages: {
+        ...leitura("/inbox/messages"),
+        // `recebido` reprocessa (limpando o erro anterior); `ignorado` arquiva.
+        setStatus: (id, status, opts) => g.patch(`/inbox/messages/${id}/status`, { status }, opts),
+      },
       documents: leitura("/inbox/documents"),
     };
 
     this.reconciliation = {
       entries: leitura("/reconciliation/entries"),
       periods: leitura("/reconciliation/periods"),
+      // Desfazer. Conciliar continua no aplicativo: depende de ação/alvo/payload.
+      unmatch: (matchId, opts) => g.delete(`/reconciliation/matches/${matchId}`, opts),
     };
 
-    this.cardStatements            = leitura("/card-statements");
-    this.ddaBoletos                = leitura("/dda-boletos");
-    this.recurringExpenses         = leitura("/recurring-expenses");
-    this.recurringPurchaseInvoices = leitura("/recurring-purchase-invoices");
-    this.insumos                   = leitura("/insumos");
-    this.notifications             = leitura("/notifications");
+    this.cardStatements = leitura("/card-statements");
+
+    this.ddaBoletos = {
+      ...leitura("/dda-boletos"),
+      // `ignore` arquiva; `reopen` devolve à fila. ⚠️ `reopen` NÃO restaura o estado
+      // anterior — devolve à fila. Guarde o match_status original se for reverter.
+      triage: (id, action, note, opts) =>
+        g.post(`/dda-boletos/${id}/triage`, note ? { action, note } : { action }, opts),
+    };
+
+    const statusRecorrente = (base) => ({
+      ...leitura(base),
+      // Só ativo ↔ pausado: regra finalizada é terminal.
+      setStatus: (id, status, opts) => g.patch(`${base}/${id}/status`, { status }, opts),
+    });
+    this.recurringExpenses         = statusRecorrente("/recurring-expenses");
+    this.recurringPurchaseInvoices = statusRecorrente("/recurring-purchase-invoices");
+
+    this.insumos = {
+      ...leitura("/insumos"),
+      create: (data, opts) => g.post("/insumos", data, opts),
+      update: (id, data, opts) => g.patch(`/insumos/${id}`, data, opts),
+      delete: (id, opts) => g.delete(`/insumos/${id}`, opts),
+    };
+
+    this.notifications = {
+      ...leitura("/notifications"),
+      markRead: (id, read = true, opts) => g.patch(`/notifications/${id}/read`, { read }, opts),
+    };
 
     this.webhooks = {
       get:    (opts) => g.get("/webhooks/payments", opts),

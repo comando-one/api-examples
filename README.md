@@ -84,10 +84,11 @@ Cada demo é uma pasta com até 3 arquivos: `<lib>.js` (lógica reutilizável No
   `node mcp-chat/chat.mjs`
 
 **Operacional (somente leitura)**
-- **`operational/`** — percorre os sete módulos legíveis desde 2026-09-01 (caixa de entrada,
-  conciliação, faturas de cartão, DDA, recorrentes, insumos, notificações) e mostra o que a
-  empresa tem em cada um. Módulo sem o scope na chave aparece como pulado, dizendo **qual**
-  scope falta — é a forma mais direta de ver o que cada scope libera. `node operational/run.js`
+- **`operational/`** — percorre os sete módulos operacionais e mostra o que a empresa tem em
+  cada um. Módulo sem o scope na chave aparece como pulado, dizendo **qual** scope falta — é a
+  forma mais direta de ver o que cada scope libera. `node operational/run.js`
+  Escrita disponível nesses módulos (pausar regra, arquivar boleto do DDA, marcar notificação,
+  CRUD de insumos, desfazer conciliação) — cada uma com sua guarda; ver `/docs`.
 
 **Ferramentas**
 - **`webhook-receiver/`** — receiver de webhook (Node, zero deps): recebe `charge.*`, valida a
@@ -148,9 +149,13 @@ await api.purchaseInvoices.create({
 
 **Fiscal e documentos** — `nfse` (+ `emit`/`cancel`/`sync`/`files`) · `documents` (`analyze`/`search`).
 
-**Operacional (somente leitura)** — `inbox` (`messages`/`documents`) ·
-`reconciliation` (`entries`/`periods`) · `cardStatements` · `ddaBoletos` ·
-`recurringExpenses` · `recurringPurchaseInvoices` · `notifications`.
+**Operacional** — `inbox` (`messages` + `setStatus`, `documents`) ·
+`reconciliation` (`entries`/`periods` + `unmatch`) · `cardStatements` (leitura) ·
+`ddaBoletos` (+ `triage`) · `recurringExpenses` e `recurringPurchaseInvoices` (+ `setStatus`) ·
+`notifications` (+ `markRead`).
+A escrita é seletiva de propósito: conciliar e pagar fatura de cartão continuam no aplicativo,
+e as ações do DDA que criam documento também — elas registram quem fez, e uma chave de API
+não tem usuário.
 
 **Plataforma** — `me()` · `reports` (`agingActions`/`cashflowForecast`) · `audit` (`timeline`) · `reminders` ·
 `lookups` (`costCenters`/`paymentConditions`/`serviceUnits`/`paymentMethods`/`paymentMethodsAp`) ·

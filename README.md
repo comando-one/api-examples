@@ -164,8 +164,9 @@ Duas formas de conectar uma IA ao Comando.One:
 
 - **Local (stdio)** — pacote [`@comando.one/mcp-server`](https://www.npmjs.com/package/@comando.one/mcp-server)
   no `claude_desktop_config.json` (`command: npx -y @comando.one/mcp-server`).
-  **159 ferramentas** — 157 curadas mais `lookups` e `comando_request` —, liberadas conforme
-  os scopes da chave e com guardas de segurança (destrutiva exige `confirm`).
+  Expõe **toda a API** como ferramentas curadas (mais `lookups` e `comando_request`),
+  liberadas conforme os scopes da chave e com guardas de segurança — destrutiva exige
+  `confirm`. A lista exata sai do próprio servidor: chame `tools/list` (abaixo).
 - **Remoto (streaming)** — endpoint **`https://api.comando.one/mcp`** (MCP Streamable HTTP),
   autenticado com `Authorization: Bearer cmd_live_…`. Não instala nada; funciona com Claude
   Desktop (conector remoto), curl ou navegador.

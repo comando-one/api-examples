@@ -158,6 +158,9 @@ export class ComandoApi {
       listAll:(params, opts) => g.listAll("/invoices", params, opts),
       get:    (id, opts) => g.get(`/invoices/${id}`, opts),
       create: (data, opts) => g.post("/invoices", data, opts),
+      // Corrige o cabeçalho (status, title) sem apagar a fatura. Cancelar é `cancel`;
+      // o vencimento mora na parcela, não aqui.
+      update: (id, data, opts) => g.patch(`/invoices/${id}`, data, opts),
       cancel: (id, opts) => g.patch(`/invoices/${id}/cancel`, {}, opts),
     };
 

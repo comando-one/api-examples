@@ -136,13 +136,28 @@ await api.purchaseInvoices.create({
 | `autoIdempotency: true` | Gera `Idempotency-Key` automaticamente em todo POST. |
 | `request(m, path, { raw: true })` | Retorna `{ status, body, replayed }` em vez de lançar erro. |
 
+### Erros
+
+Toda falha vem como JSON com `error`. Dois códigos que valem conhecer antes de integrar:
+
+- **`424 Failed Dependency`** — a sua requisição estava correta; quem falhou foi um terceiro
+  (o fisco, o banco, o gateway de pagamento). O motivo dele vem em `error`, em português.
+  A API **não** responde 502/504: a borda da Cloudflare substituiria o corpo pela página HTML
+  dela e o motivo não chegaria até você.
+- **`409 Conflict`** — conflito de estado, e a mensagem diz a rota para resolver. Ex.: emitir
+  NFS-e de uma fatura que já tem nota devolve o `id` da existente e a rota de cancelamento;
+  apagar fatura com baixa devolve a rota do estorno.
+
+**Não há ambiente de homologação**: só existem chaves `cmd_live_`, e emissão de NFS-e é
+documento fiscal real. Para ensaiar sem gerar documento, exercite os caminhos que recusam.
+
 ### Namespaces
 
 **Cadastros e vendas** — `companies` · `customers` (+ `addresses`, `contacts`, `invoices/contracts/proposals`) ·
 `suppliers` (+ `paymentMethods`) · `services` · `serviceCategories` (CRUD) · `insumos` · `proposals` (+ `send`) ·
 `contracts` (+ `pause`/`resume`).
 
-**Financeiro** — `invoices` (+ `cancel`/`delete`, baixa e estorno de parcela) · `purchaseInvoices` (+ `cancel`) ·
+**Financeiro** — `invoices` (+ `update`/`cancel`/`delete`, baixa e estorno de parcela) · `purchaseInvoices` (+ `cancel`) ·
 `expenses` · `charges` (+ `cancel`/`refund`) · `payouts` (+ `cancel`/`sync`) ·
 `split` (`rules`/`executions`/`items`) · `finance` (`ledger`/`natures`/`createMovement`/`deleteMovement`) ·
 `costCenters` · `bankAccounts` · `marketIndices`.

@@ -208,7 +208,7 @@ export async function confirmPayment(api, chargeId) {
 
 /** Registra/atualiza o webhook de pagamentos da empresa (PUT /webhooks/payments). */
 export async function registerWebhook(api, url, events) {
-  return await api.webhooks.set({
+  return await api.webhooks.payments.set({
     url,
     events: events || ["charge.paid", "charge.cancelled", "charge.expired", "charge.failed"],
   });

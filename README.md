@@ -83,7 +83,7 @@ Cada demo é uma pasta com até 3 arquivos: `<lib>.js` (lógica reutilizável No
 - **`mcp-chat/`** — mesma ideia no terminal (CLI), via o pacote npm `@comando.one/mcp-server` (stdio).
   `node mcp-chat/chat.mjs`
 
-**Operacional (somente leitura)**
+**Operacional**
 - **`operational/`** — percorre os sete módulos operacionais e mostra o que a empresa tem em
   cada um. Módulo sem o scope na chave aparece como pulado, dizendo **qual** scope falta — é a
   forma mais direta de ver o que cada scope libera. `node operational/run.js`
@@ -155,26 +155,26 @@ documento fiscal real. Para ensaiar sem gerar documento, exercite os caminhos qu
 
 **Cadastros e vendas** — `companies` · `customers` (+ `addresses`, `contacts`, `invoices/contracts/proposals`) ·
 `suppliers` (+ `paymentMethods`) · `services` · `serviceCategories` (CRUD) · `insumos` · `proposals` (+ `send`) ·
-`contracts` (+ `pause`/`resume`).
+`contracts` (+ `pause`/`resume`, `generateInvoices`, reajustes: `readjustments`/`applyReadjustment`/`readjustmentsDue`/`revertReadjustment`).
 
-**Financeiro** — `invoices` (+ `update`/`cancel`/`delete`, baixa e estorno de parcela) · `purchaseInvoices` (+ `cancel`) ·
-`expenses` · `charges` (+ `cancel`/`refund`) · `payouts` (+ `cancel`/`sync`) ·
+**Financeiro** — `invoices` (+ `update`/`cancel`/`delete`/`send`/`setAutoSend`, parcelas: `listCharges`/`settleCharge`/`listChargePayments`/`reverseChargePayment`) · `purchaseInvoices` (+ `cancel`/`delete`) ·
+`expenses` · `charges` (+ `cancel`/`refund`/`confirm`) · `payouts` (+ `cancel`/`sync`) ·
 `split` (`rules`/`executions`/`items`) · `finance` (`ledger`/`natures`/`createMovement`/`deleteMovement`) ·
 `costCenters` · `bankAccounts` · `marketIndices`.
 
-**Fiscal e documentos** — `nfse` (+ `emit`/`cancel`/`sync`/`files`) · `documents` (`analyze`/`search`).
+**Fiscal e documentos** — `nfse` (+ `emit`/`cancel`/`sync`/`files`) · `documents` (`list`/`analyze`).
 
 **Operacional** — `inbox` (`messages` + `setStatus`, `documents`) ·
-`reconciliation` (`entries`/`periods` + `unmatch`) · `cardStatements` (leitura) ·
+`reconciliation` (`entries`/`periods` + `resolve`/`unmatch`) · `cardStatements` (leitura) ·
 `ddaBoletos` (+ `triage`) · `recurringExpenses` e `recurringPurchaseInvoices` (+ `setStatus`) ·
 `notifications` (+ `markRead`).
-A escrita é seletiva de propósito: conciliar e pagar fatura de cartão continuam no aplicativo,
+A escrita é seletiva de propósito: pagar fatura de cartão continua no aplicativo,
 e as ações do DDA que criam documento também — elas registram quem fez, e uma chave de API
 não tem usuário.
 
 **Plataforma** — `me()` · `reports` (`agingActions`/`cashflowForecast`) · `audit` (`timeline`) · `reminders` ·
 `lookups` (`costCenters`/`paymentConditions`/`serviceUnits`/`paymentMethods`/`paymentMethodsAp`) ·
-`webhooks` (+ `deliveries`).
+`webhooks` (CRUD + `test`/`events`/`deliveries`; `payments` = configuração única anterior).
 
 ---
 
@@ -187,9 +187,10 @@ Duas formas de conectar uma IA ao Comando.One:
   Expõe **toda a API** como ferramentas curadas (mais `lookups` e `comando_request`),
   liberadas conforme os scopes da chave e com guardas de segurança — destrutiva exige
   `confirm`. A lista exata sai do próprio servidor: chame `tools/list` (abaixo).
-- **Remoto (streaming)** — endpoint **`https://api.comando.one/mcp`** (MCP Streamable HTTP),
-  autenticado com `Authorization: Bearer cmd_live_…`. Não instala nada; funciona com Claude
-  Desktop (conector remoto), curl ou navegador.
+- **Remoto (streaming)** — endpoint **`https://api.comando.one/mcp`** (MCP Streamable HTTP).
+  Não instala nada. No Claude (Desktop/web), ChatGPT e outros clientes com conector remoto,
+  cole só a URL: o **OAuth 2.1** abre o navegador para você entrar e autorizar — sem chave.
+  Para curl, scripts e clientes com cabeçalho fixo: `Authorization: Bearer cmd_live_…`.
 
 ```bash
 curl https://api.comando.one/mcp \

@@ -14,7 +14,7 @@ assistente › Pronto! Cadastrei a Padaria do Zé (CNPJ não informado). Quer ge
 
 - **Zero dependências** — só Node 18+. Fala JSON-RPC com o MCP server por stdio e chama o Gemini via `fetch`.
 - **Mesmas envs do projeto**: `GEMINI_API_KEY`, `GEMINI_MODEL`, `COMANDO_API_KEY`, `COMANDO_COMPANY_ID`.
-- **Function calling** real: as ~50 tools do MCP viram `functionDeclarations` do Gemini.
+- **Function calling** real: as tools do MCP (até ~170, conforme os scopes da chave) viram `functionDeclarations` do Gemini.
 - **Seguro**: ações destrutivas (cancelar/excluir/estornar/pagar) o assistente confirma antes e só então chama a tool com `confirm: true` (a guarda do MCP também exige isso).
 
 ## Como rodar

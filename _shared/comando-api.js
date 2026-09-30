@@ -78,6 +78,7 @@ export class ComandoApi {
   get(path, opts)        { return this.request("GET", path, opts); }
   post(path, body, opts)  { return this.request("POST", path, { ...opts, body }); }
   patch(path, body, opts) { return this.request("PATCH", path, { ...opts, body }); }
+  put(path, body, opts)   { return this.request("PUT", path, { ...opts, body }); }
   delete(path, opts)      { return this.request("DELETE", path, opts); }
 
   /** Paginação automática: itera ?page= até cobrir meta.total. Retorna array achatado. */
@@ -151,7 +152,17 @@ export class ComandoApi {
       ...crud("/proposals"),
       send: (id, opts) => g.post(`/proposals/${id}/send`, undefined, opts),
     };
-    this.contracts = crud("/contracts");
+    this.contracts = {
+      ...crud("/contracts"),
+      pause:  (id, opts) => g.post(`/contracts/${id}/pause`, {}, opts),
+      resume: (id, opts) => g.post(`/contracts/${id}/resume`, {}, opts),
+      // mode: "extra" (padrão, avulsa e repetível) | "cycle" (antecipa o ciclo) | "skip"
+      generateInvoices:   (id, data, opts) => g.post(`/contracts/${id}/generate-invoices`, data ?? {}, opts),
+      readjustments:      (id, opts) => g.get(`/contracts/${id}/readjustments`, opts),
+      applyReadjustment:  (id, data, opts) => g.post(`/contracts/${id}/readjustments`, data, opts),
+      readjustmentsDue:   (params, opts) => g.get(`/contracts/readjustments/due${qs(params)}`, opts),
+      revertReadjustment: (id, readjustmentId, opts) => g.delete(`/contracts/${id}/readjustments/${readjustmentId}`, opts),
+    };
 
     this.invoices = {
       list:   (params, opts) => g.get(`/invoices${qs(params)}`, opts),
@@ -162,6 +173,16 @@ export class ComandoApi {
       // o vencimento mora na parcela, não aqui.
       update: (id, data, opts) => g.patch(`/invoices/${id}`, data, opts),
       cancel: (id, opts) => g.patch(`/invoices/${id}/cancel`, {}, opts),
+      delete: (id, opts) => g.delete(`/invoices/${id}`, opts),
+      // Segunda via por e-mail agora. Sem `to`, vai ao e-mail do cliente.
+      send:   (id, data, opts) => g.post(`/invoices/${id}/send`, data ?? {}, opts),
+      // Cobrança automática nas parcelas em aberto — fatura criada pela API nasce desligada.
+      setAutoSend: (id, data, opts) => g.patch(`/invoices/${id}/auto-send`, data ?? {}, opts),
+      // Parcelas (não confundir com `charges`, a cobrança do gateway) e baixa/estorno.
+      listCharges:          (id, opts) => g.get(`/invoices/${id}/charges`, opts),
+      settleCharge:         (id, chargeId, data, opts) => g.post(`/invoices/${id}/charges/${chargeId}/pay`, data ?? {}, opts),
+      listChargePayments:   (id, chargeId, opts) => g.get(`/invoices/${id}/charges/${chargeId}/payments`, opts),
+      reverseChargePayment: (id, chargeId, paymentId, opts) => g.delete(`/invoices/${id}/charges/${chargeId}/payments/${paymentId}`, opts),
     };
 
     this.purchaseInvoices = {
@@ -170,6 +191,7 @@ export class ComandoApi {
       get:    (id, opts) => g.get(`/purchase-invoices/${id}`, opts),
       create: (data, opts) => g.post("/purchase-invoices", data, opts),
       cancel: (id, opts) => g.patch(`/purchase-invoices/${id}/cancel`, {}, opts),
+      delete: (id, opts) => g.delete(`/purchase-invoices/${id}`, opts),
     };
 
     this.charges = {
@@ -210,6 +232,8 @@ export class ComandoApi {
       get:    (id, opts) => g.get(`/nfse/${id}`, opts),
       emit:   (invoiceId, opts) => g.post("/nfse", { invoice_id: invoiceId }, opts),
       cancel: (id, { motivo, justificativa }, opts) => g.patch(`/nfse/${id}/cancel`, { motivo, justificativa }, opts),
+      sync:   (id, opts) => g.post(`/nfse/${id}/sync`, {}, opts),
+      files:  (id, opts) => g.get(`/nfse/${id}/files`, opts),
     };
 
     this.finance = {
@@ -232,11 +256,18 @@ export class ComandoApi {
       get:  (id, opts) => g.get(`/bank-accounts/${id}`, opts),
     };
 
-    // Faltavam no client enxuto, embora o SDK oficial os tenha desde sempre — o comentário
-    // acima promete "cobertura total" e a promessa não estava sendo cumprida.
-    this.serviceCategories = crud("/service-categories", { del: true });
-    this.costCenters       = crud("/cost-centers", { del: true });
-    this.reminders         = crud("/reminders", { del: true });
+    // Estes três não têm GET /{id} na API — por isso não usam `crud` (que geraria um `get`
+    // fadado a 404).
+    const semGet = (base) => ({
+      list:    (params, opts) => g.get(`${base}${qs(params)}`, opts),
+      listAll: (params, opts) => g.listAll(base, params, opts),
+      create:  (data, opts) => g.post(base, data, opts),
+      update:  (id, data, opts) => g.patch(`${base}/${id}`, data, opts),
+      delete:  (id, opts) => g.delete(`${base}/${id}`, opts),
+    });
+    this.serviceCategories = semGet("/service-categories");
+    this.costCenters       = semGet("/cost-centers");
+    this.reminders         = semGet("/reminders");
 
     this.reports = {
       agingActions:     (params, opts) => g.get(`/reports/aging-actions${qs(params)}`, opts),
@@ -248,6 +279,8 @@ export class ComandoApi {
     };
 
     this.documents = {
+      // Procura anexos já enviados (search = trecho do nome; entity_type/entity_id).
+      list:    (params, opts) => g.get(`/documents${qs(params)}`, opts),
       analyze: (data, opts) => g.post("/documents/analyze", data, opts),
     };
 
@@ -255,9 +288,9 @@ export class ComandoApi {
       get: (params, opts) => g.get(`/market-indices${qs(params)}`, opts),
     };
 
-    // Módulos operacionais (somente leitura, desde 2026-09-01): caixa de entrada,
-    // conciliação, cartão, DDA, recorrentes, insumos e notificações. Escrever neles mexe
-    // em dinheiro e ainda não está exposto na API.
+    // Módulos operacionais: caixa de entrada, conciliação, cartão, DDA, recorrentes, insumos
+    // e notificações. Leitura desde 2026-09-01; as escritas (status, conciliar/desfazer,
+    // triagem, CRUD de insumos, marcar lida) vieram depois, cada uma com guarda própria.
     const leitura = (base) => ({
       list:    (params, opts) => g.get(`${base}${qs(params)}`, opts),
       listAll: (params, opts) => g.listAll(base, params, opts),
@@ -276,7 +309,8 @@ export class ComandoApi {
     this.reconciliation = {
       entries: leitura("/reconciliation/entries"),
       periods: leitura("/reconciliation/periods"),
-      // Desfazer. Conciliar continua no aplicativo: depende de ação/alvo/payload.
+      // Conciliar um lançamento do extrato (ação/alvo/payload: ver a OpenAPI) e desfazer.
+      resolve: (entryId, body, opts) => g.post(`/reconciliation/entries/${entryId}/resolve`, body, opts),
       unmatch: (matchId, opts) => g.delete(`/reconciliation/matches/${matchId}`, opts),
     };
 
@@ -310,14 +344,28 @@ export class ComandoApi {
       markRead: (id, read = true, opts) => g.patch(`/notifications/${id}/read`, { read }, opts),
     };
 
-    this.webhooks = {
+    // Mesma forma do SDK oficial: vários webhooks por empresa, cada um com seus eventos.
+    // `payments` é a configuração única anterior (`/webhooks/payments`), que segue valendo.
+    const webhookPagamentos = {
       get:    (opts) => g.get("/webhooks/payments", opts),
-      set:    (data, opts) => g.request("PUT", "/webhooks/payments", { ...opts, body: data }),
+      set:    (data, opts) => g.put("/webhooks/payments", data, opts),
       delete: (opts) => g.delete("/webhooks/payments", opts),
+    };
+    this.webhooks = {
+      list:   (params, opts) => g.get(`/webhooks${qs(params)}`, opts),
+      get:    (id, opts) => g.get(`/webhooks/${id}`, opts),
+      create: (data, opts) => g.post("/webhooks", data, opts), // o `secret` vem só nesta resposta
+      update: (id, data, opts) => g.patch(`/webhooks/${id}`, data, opts),
+      delete: (id, opts) => g.delete(`/webhooks/${id}`, opts),
+      test:   (id, opts) => g.post(`/webhooks/${id}/test`, undefined, opts),
+      events: (opts) => g.get("/webhooks/events", opts),
       deliveries: {
         list:      (params, opts) => g.get(`/webhooks/deliveries${qs(params)}`, opts),
         redeliver: (id, opts) => g.post(`/webhooks/deliveries/${id}/redeliver`, undefined, opts),
       },
+      payments: webhookPagamentos,
+      // Legado: antes `webhooks.set` era a configuração de pagamentos. Mantido para quem já usa.
+      set: webhookPagamentos.set,
     };
   }
 

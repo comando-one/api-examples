@@ -111,7 +111,7 @@ import { ComandoApi } from "@comando.one/sdk"; // ou "./_shared/comando-api.js"
 
 const api = new ComandoApi({ apiKey: "cmd_live_...", autoIdempotency: true });
 
-const me      = await api.me();                                   // identidade + scopes
+const me      = await api.me();                                   // identidade, scopes, plano e uso (me.plan)
 const cliente = await api.customers.create({ name: "ACME", type: "juridica" });
 await api.customers.addresses.create(cliente.id, { street: "Rua X", city: "SP", state: "SP" });
 

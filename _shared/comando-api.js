@@ -227,6 +227,32 @@ export class ComandoApi {
       },
     };
 
+    // Parcerias: caixa compartilhado com parceiro que não é sócio (o cálculo é do servidor)
+    this.parcerias = {
+      list:    (params, opts) => g.get(`/parcerias${qs(params)}`, opts),
+      listAll: (params, opts) => g.listAll("/parcerias", params, opts),
+      get:     (id, opts) => g.get(`/parcerias/${id}`, opts),
+      create:  (data, opts) => g.post("/parcerias", data, opts),
+      update:  (id, data, opts) => g.patch(`/parcerias/${id}`, data, opts),
+      close:   (id, opts) => g.delete(`/parcerias/${id}`, opts),
+      lancamentos: {
+        list:    (id, params, opts) => g.get(`/parcerias/${id}/lancamentos${qs(params)}`, opts),
+        create:  (id, data, opts) => g.post(`/parcerias/${id}/lancamentos`, data, opts),
+        reverse: (id, lancamentoId, motivo, opts) => g.post(`/parcerias/${id}/lancamentos/${lancamentoId}/estornar`, { motivo }, opts),
+      },
+      retiradas: {
+        create:       (id, data, opts) => g.post(`/parcerias/${id}/retiradas`, data, opts),
+        resolverNota: (id, lancamentoId, data, opts) => g.post(`/parcerias/${id}/retiradas/${lancamentoId}/nota`, data, opts),
+      },
+      vinculos: {
+        list:   (id, opts) => g.get(`/parcerias/${id}/vinculos`, opts),
+        create: (id, data, opts) => g.post(`/parcerias/${id}/vinculos`, data, opts),
+        delete: (id, vinculoId, opts) => g.delete(`/parcerias/${id}/vinculos/${vinculoId}`, opts),
+      },
+      prestacaoDeContas: (id, competencia, opts) =>
+        g.get(`/parcerias/${id}/prestacao-de-contas${competencia ? qs({ competencia }) : ""}`, opts),
+    };
+
     this.nfse = {
       list:   (params, opts) => g.get(`/nfse${qs(params)}`, opts),
       get:    (id, opts) => g.get(`/nfse/${id}`, opts),

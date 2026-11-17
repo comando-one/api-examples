@@ -192,6 +192,8 @@ export class ComandoApi {
       create: (data, opts) => g.post("/purchase-invoices", data, opts),
       cancel: (id, opts) => g.patch(`/purchase-invoices/${id}/cancel`, {}, opts),
       delete: (id, opts) => g.delete(`/purchase-invoices/${id}`, opts),
+      // baixa manual de uma parcela (não move dinheiro no banco — para isso, payouts)
+      pay:    (id, data, opts) => g.post(`/purchase-invoices/${id}/pay`, data, opts),
     };
 
     this.charges = {
@@ -201,6 +203,7 @@ export class ComandoApi {
       create: (data, opts) => g.post("/charges", data, opts),
       cancel: (id, opts) => g.delete(`/charges/${id}`, opts),
       refund: (id, opts) => g.post(`/charges/${id}/refund`, undefined, opts),
+      pdf:    (id, opts) => g.get(`/charges/${id}/pdf`, opts), // 202 + retry_after_seconds enquanto o banco processa
       confirm: (id, opts) => g.post(`/charges/${id}/confirm`, undefined, opts), // Pix estático: marca pago + dispara charge.paid
     };
 
@@ -248,6 +251,14 @@ export class ComandoApi {
         list:   (id, opts) => g.get(`/parcerias/${id}/vinculos`, opts),
         create: (id, data, opts) => g.post(`/parcerias/${id}/vinculos`, data, opts),
         delete: (id, vinculoId, opts) => g.delete(`/parcerias/${id}/vinculos/${vinculoId}`, opts),
+        previa:    (id, params, opts) => g.get(`/parcerias/${id}/vinculos/previa${qs(params)}`, opts),
+        antecipar: (id, vinculoId, desde, opts) => g.patch(`/parcerias/${id}/vinculos/${vinculoId}`, { desde }, opts),
+      },
+      updateParticipantes: (id, participantes, opts) => g.patch(`/parcerias/${id}/participantes`, { participantes }, opts),
+      updateSaldoInicial:  (id, data, opts) => g.patch(`/parcerias/${id}/saldo-inicial`, data, opts),
+      empresas: {
+        upsert: (id, data, opts) => g.post(`/parcerias/${id}/empresas`, data, opts),
+        delete: (id, empresaId, opts) => g.delete(`/parcerias/${id}/empresas/${empresaId}`, opts),
       },
       prestacaoDeContas: (id, competencia, opts) =>
         g.get(`/parcerias/${id}/prestacao-de-contas${competencia ? qs({ competencia }) : ""}`, opts),

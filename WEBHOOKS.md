@@ -39,6 +39,9 @@ Endpoints: `GET/POST /v1/webhooks`, `GET/PATCH/DELETE /v1/webhooks/:id`. Scope: 
 | Clientes | `customer.created`, `customer.updated`, `customer.deleted` |
 | Fornecedores | `supplier.created`, `supplier.updated`, `supplier.deleted` |
 | Repasses | `payout.completed`, `payout.failed`, `payout.scheduled`, `payout.cancelled` |
+| Split de pagamentos | `split.calculated`, `repasse.released`, `repasse.paid`, `repasse.failed`, `repasse.reversed`, `supplier_payout_request.created`, `supplier_payout_request.approved` |
+| Plano | `plan.limit_near` (franquia na previsão de acabar, em 80% ou esgotada) |
+| Parcerias | `parceria.entry_created` (lançamento no livro), `parceria.note_matched` (NFS-e do parceiro casada com a retirada) |
 
 Os eventos de negócio disparam **independente da origem** (app ou API), via triggers no banco.
 
@@ -57,10 +60,11 @@ Corpo:
 {
   "event": "charge.paid",
   "charge": { "id": "...", "provider": "inter", "invoice_id": "...", "status": "paid", "status_raw": "RECEBIDO", "amount": 250.0 },
+  "data":   { "id": "...", "provider": "inter", "invoice_id": "...", "status": "paid", "status_raw": "RECEBIDO", "amount": 250.0 },
   "timestamp": "2026-06-07T12:00:00.000Z"
 }
 ```
-A chave do payload varia por tipo: `charge` (cobranças), `payout` (repasses) ou `data` (faturas, propostas, contratos, NFS-e, clientes, fornecedores, contas a pagar).
+O objeto do evento vem sempre em **`data`** (desde 17/11/2026). Em `charge.*` e `payout.*` ele também continua na chave antiga (`charge` / `payout`), com o mesmo conteúdo — integração existente não quebra, e código novo pode ler só `data`.
 
 Responda **2xx** para confirmar o recebimento. Qualquer outro status é considerado falha.
 

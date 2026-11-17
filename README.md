@@ -157,9 +157,9 @@ documento fiscal real. Para ensaiar sem gerar documento, exercite os caminhos qu
 `suppliers` (+ `paymentMethods`) · `services` · `serviceCategories` (CRUD) · `insumos` · `proposals` (+ `send`) ·
 `contracts` (+ `pause`/`resume`, `generateInvoices`, reajustes: `readjustments`/`applyReadjustment`/`readjustmentsDue`/`revertReadjustment`).
 
-**Financeiro** — `invoices` (+ `update`/`cancel`/`delete`/`send`/`setAutoSend`, parcelas: `listCharges`/`settleCharge`/`listChargePayments`/`reverseChargePayment`) · `purchaseInvoices` (+ `cancel`/`delete`) ·
-`expenses` · `charges` (+ `cancel`/`refund`/`confirm`) · `payouts` (+ `cancel`/`sync`) ·
-`split` (`rules`/`executions`/`items`) · `parcerias` (+ `lancamentos`/`retiradas`/`vinculos`/`prestacaoDeContas`) · `finance` (`ledger`/`natures`/`createMovement`/`deleteMovement`) ·
+**Financeiro** — `invoices` (+ `update`/`cancel`/`delete`/`send`/`setAutoSend`, parcelas: `listCharges`/`settleCharge`/`listChargePayments`/`reverseChargePayment`) · `purchaseInvoices` (+ `cancel`/`delete`/`pay`) ·
+`expenses` · `charges` (+ `cancel`/`refund`/`confirm`/`pdf`) · `payouts` (+ `cancel`/`sync`) ·
+`split` (`rules`/`executions`/`items`) · `parcerias` (+ `lancamentos`/`retiradas`/`vinculos` com `previa`/`antecipar`, `updateParticipantes`/`updateSaldoInicial`/`empresas`/`prestacaoDeContas`) · `finance` (`ledger`/`natures`/`createMovement`/`deleteMovement`) ·
 `costCenters` · `bankAccounts` · `marketIndices`.
 
 **Fiscal e documentos** — `nfse` (+ `emit`/`cancel`/`sync`/`files`) · `documents` (`list`/`analyze`).

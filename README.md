@@ -155,7 +155,7 @@ documento fiscal real. Para ensaiar sem gerar documento, exercite os caminhos qu
 
 **Cadastros e vendas** — `companies` · `customers` (+ `addresses`, `contacts`, `invoices/contracts/proposals`) ·
 `suppliers` (+ `paymentMethods`) · `services` · `serviceCategories` (CRUD) · `insumos` · `proposals` (+ `send`) ·
-`contracts` (+ `pause`/`resume`, `generateInvoices`, reajustes: `readjustments`/`applyReadjustment`/`readjustmentsDue`/`revertReadjustment`).
+`contracts` (+ `pause`/`resume`, `generateInvoices`, reajustes: `readjustments`/`applyReadjustment`/`readjustmentsDue`/`revertReadjustment`, Pix Automático: `pixAutomatico`/`pixAutomaticoLink`).
 
 **Financeiro** — `invoices` (+ `update`/`cancel`/`delete`/`send`/`setAutoSend`, parcelas: `listCharges`/`settleCharge`/`listChargePayments`/`reverseChargePayment`) · `purchaseInvoices` (+ `cancel`/`delete`/`pay`) ·
 `expenses` · `charges` (+ `cancel`/`refund`/`confirm`/`pdf`) · `payouts` (+ `cancel`/`sync`) ·

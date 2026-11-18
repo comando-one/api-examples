@@ -158,6 +158,9 @@ export class ComandoApi {
       resume: (id, opts) => g.post(`/contracts/${id}/resume`, {}, opts),
       // mode: "extra" (padrão, avulsa e repetível) | "cycle" (antecipa o ciclo) | "skip"
       generateInvoices:   (id, data, opts) => g.post(`/contracts/${id}/generate-invoices`, data ?? {}, opts),
+      // Pix Automático: estado da autorização e link que o pagador abre para autorizar o débito.
+      pixAutomatico:      (id, opts) => g.get(`/contracts/${id}/pix-automatico`, opts),
+      pixAutomaticoLink:  (id, opts) => g.post(`/contracts/${id}/pix-automatico`, {}, opts),
       readjustments:      (id, opts) => g.get(`/contracts/${id}/readjustments`, opts),
       applyReadjustment:  (id, data, opts) => g.post(`/contracts/${id}/readjustments`, data, opts),
       readjustmentsDue:   (params, opts) => g.get(`/contracts/readjustments/due${qs(params)}`, opts),

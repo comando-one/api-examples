@@ -265,6 +265,13 @@ export class ComandoApi {
       },
       prestacaoDeContas: (id, competencia, opts) =>
         g.get(`/parcerias/${id}/prestacao-de-contas${competencia ? qs({ competencia }) : ""}`, opts),
+      // compensação: parte de um participante que passa para outro; quem cede aceita ou recusa
+      compensacoes: {
+        list:      (id, params, opts) => g.get(`/parcerias/${id}/compensacoes${qs(params)}`, opts),
+        create:    (id, data, opts) => g.post(`/parcerias/${id}/compensacoes`, data, opts),
+        responder: (id, compensacaoId, data, opts) => g.post(`/parcerias/${id}/compensacoes/${compensacaoId}/responder`, data, opts),
+        cancel:    (id, compensacaoId, opts) => g.post(`/parcerias/${id}/compensacoes/${compensacaoId}/cancelar`, {}, opts),
+      },
     };
 
     this.nfse = {

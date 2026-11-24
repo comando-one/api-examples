@@ -249,6 +249,10 @@ export class ComandoApi {
       retiradas: {
         create:       (id, data, opts) => g.post(`/parcerias/${id}/retiradas`, data, opts),
         resolverNota: (id, lancamentoId, data, opts) => g.post(`/parcerias/${id}/retiradas/${lancamentoId}/nota`, data, opts),
+        // várias contas numa transação só: { participante_id, data, contas: [{ bank_account_id, valor }], pelo_banco? }
+        createLote:   (id, data, opts) => g.post(`/parcerias/${id}/retiradas/lote`, data, opts),
+        // de quais contas sai `valor`, zerando primeiro as de menor saldo da parceria (não grava)
+        sugestao:     (id, valor, opts) => g.get(`/parcerias/${id}/retiradas/sugestao${qs({ valor })}`, opts),
       },
       vinculos: {
         list:   (id, opts) => g.get(`/parcerias/${id}/vinculos`, opts),

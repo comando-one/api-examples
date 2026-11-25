@@ -276,6 +276,14 @@ export class ComandoApi {
         responder: (id, compensacaoId, data, opts) => g.post(`/parcerias/${id}/compensacoes/${compensacaoId}/responder`, data, opts),
         cancel:    (id, compensacaoId, opts) => g.post(`/parcerias/${id}/compensacoes/${compensacaoId}/cancelar`, {}, opts),
       },
+      // retiradas pedidas pelo parceiro no portal: a chave age como a gestora (pedir é só pelo portal)
+      solicitacoesRetirada: {
+        list:     (id, params, opts) => g.get(`/parcerias/${id}/solicitacoes-retirada${qs(params)}`, opts),
+        aceite:   (id, solicitacaoId, data, opts) => g.post(`/parcerias/${id}/solicitacoes-retirada/${solicitacaoId}/aceite`, data, opts),
+        recusar:  (id, solicitacaoId, data, opts) => g.post(`/parcerias/${id}/solicitacoes-retirada/${solicitacaoId}/recusar`, data, opts),
+        cancel:   (id, solicitacaoId, opts) => g.post(`/parcerias/${id}/solicitacoes-retirada/${solicitacaoId}/cancelar`, {}, opts),
+        executar: (id, solicitacaoId, data, opts) => g.post(`/parcerias/${id}/solicitacoes-retirada/${solicitacaoId}/executar`, data, opts),
+      },
     };
 
     this.nfse = {
